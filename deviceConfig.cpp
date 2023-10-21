@@ -51,7 +51,7 @@ void DeviceConfig::HardReset()
         MqttConfig mcfg;
         memset(&mcfg, 0, sizeof(mcfg));
         strcpy(mcfg.brokerAddress, "192.168.0.1");
-        mcfg.port = 1883;        
+        mcfg.port = 1883;
         puts("Saving Mqtt config\n");
         SaveMqttConfig(&mcfg);
 

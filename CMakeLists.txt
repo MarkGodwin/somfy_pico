@@ -29,13 +29,15 @@ add_executable(somfy_remote
   somfy_remote.cpp
   radio.cpp
   remote.cpp
+  scheduler.cpp
   webInterface.cpp
+  wifiConnection.cpp
   wifiScanner.cpp
   blockStorage.cpp
   deviceConfig.cpp
+  mqttClient.cpp
   dhcpserver/dhcpserver.c
   dnsserver/dnsserver.c
-  #fs.c
 )
 
 pico_set_program_name(somfy_remote "somfy_remote")
@@ -62,6 +64,7 @@ target_link_libraries(somfy_remote
         hardware_pio
         pico_cyw43_arch_lwip_threadsafe_background
         pico_lwip_http
+        pico_lwip_mqtt
         pico_flash
         )
         

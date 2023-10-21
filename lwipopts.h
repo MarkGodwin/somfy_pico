@@ -28,6 +28,8 @@
 #define MEM_STATS                   0
 #define SYS_STATS                   0
 #define MEMP_STATS                  0
+// Mqtt seems to need an extra timer, not sure why
+#define MEMP_NUM_SYS_TIMEOUT        (LWIP_NUM_SYS_TIMEOUT_INTERNAL+1)
 #define LINK_STATS                  0
 // #define ETH_PAD_SIZE                2
 #define LWIP_CHKSUM_ALGORITHM       3
@@ -86,4 +88,6 @@
 #define LWIP_HTTPD_CGI_SSI              1
 #define LWIP_HTTPD_FILE_STATE           1
 
+#define HTTPD_ADDITIONAL_CONTENT_TYPES { "svg", HTTP_HDR_SVG }
+ 
 #define HTTPD_FSDATA_FILE "../../../../fsdata.c"

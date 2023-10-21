@@ -3,7 +3,7 @@
 if [ ! -f makefsdata ]; then
     # Doing this outside cmake as we don't want it cross-compiled but for host
     echo Compiling makefsdata
-    gcc -o makefsdata -Ipico-sdk/lib/lwip/src/include -Ipico-sdk/lib/lwip/contrib/ports/unix/port/include -I. -DMAKEFS_SUPPORT_DEFLATE=1 -DMAKEFS_SUPPORT_DEFLATE_ZLIB=1 pico-sdk/lib/lwip/src/apps/http/makefsdata/makefsdata.c -lz
+    gcc -o makefsdata -Ipico-sdk/lib/lwip/src/include -Ipico-sdk/lib/lwip/contrib/ports/unix/port/include -I. -DMAKEFS_SUPPORT_DEFLATE=1 -DMAKEFS_SUPPORT_DEFLATE_ZLIB=1 -DHTTPD_ADDITIONAL_CONTENT_TYPES="{\"svg\", HTTP_HDR_SVG }" pico-sdk/lib/lwip/src/apps/http/makefsdata/makefsdata.c -lz
 fi
 
 # Build a new version of the web interface

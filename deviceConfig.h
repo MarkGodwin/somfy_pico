@@ -16,6 +16,7 @@ struct MqttConfig
     uint16_t port;
     char username[32];
     char password[64];
+    char topic[128];
 };
 
 class DeviceConfig

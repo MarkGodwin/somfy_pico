@@ -1,4 +1,4 @@
 {
-    "currentSsid": <!--#ssid-->,
+    "currentSsid": "<!--#ssid-->",
     "availableSsids": [<!--#ssidList-->]
 }

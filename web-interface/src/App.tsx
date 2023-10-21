@@ -1,19 +1,21 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import { NavBar } from './Navbar';
 import { Outlet } from 'react-router-dom';
+import { ToasterOutlet } from './toasterOutlet';
 
 export class App extends Component {
 
   render(): React.ReactNode {
     return (
-
+      <>
+      <NavBar />
       <div className="container">
-        <NavBar />
-        <Outlet />
-
-      </div>  );
+        <ToasterOutlet>
+          <Outlet />
+        </ToasterOutlet>
+      </div>
+      </>);
   }
 }
 

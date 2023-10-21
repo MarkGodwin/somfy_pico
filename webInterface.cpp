@@ -3,103 +3,161 @@
 #include "pico/cyw43_arch.h"
 #include "pico/flash.h"
 #include "lwip/apps/httpd.h"
+#include <map>
+#include <string>
 
 #include "webInterface.h"
 #include "deviceConfig.h"
+#include "serviceControl.h"
+
 
 // HTTPD callbacks aren't conducive to multiple instances
-static WebInterface *_globalInstance;
+WebInterface *_globalInstance;
 
-WebInterface *WebInterface::GetInstance(DeviceConfig &config)
+WebInterface::WebInterface(DeviceConfig &config, ServiceControl &service, IWifiConnection &wifiConnection, WifiScanner &wifiScanner, bool apMode)
+: _config(config), _service(service), _wifiConnection(wifiConnection), _wifiScanner(wifiScanner), _apMode(apMode)
 {
-    if(!_globalInstance)
-    {
-        _globalInstance = new WebInterface(config);
-    }
-    return _globalInstance;
+    _globalInstance = this;
 }
 
+struct CgiContext {
+    WebInterface *pThis;
+    bool result;
+};
 
 extern "C" {
-    // Will be called before processing any URL with a query string
+    // Called before processing any URL with a query string
     void httpd_cgi_handler(struct fs_file *file, const char* uri, int iNumParams,
                                 char **pcParam, char **pcValue, void *connectionState)
     {
-        WebInterface *pThis = (WebInterface *)connectionState;
-        pThis->HandleRequest(file, uri, iNumParams, pcParam, pcValue);
+        CgiContext *ctx = (CgiContext *)connectionState;
+        ctx->result = ctx->pThis->HandleRequest(file, uri, iNumParams, pcParam, pcValue);
     }
 
+    // Called by httpd when a file is opened
     void *fs_state_init(struct fs_file *file, const char *name)
     {
         // Hack
-        return _globalInstance;
+        auto ctx = new CgiContext;
+        ctx->pThis = _globalInstance;
+        ctx->result = false;
+        return ctx;
     }
-    /** This user-defined function is called when a file is closed. */
+
+    // Called by httpd when a file is closed
     void fs_state_free(struct fs_file *file, void *state)
     {
-        // Do nothing, as we didn't allocate it
+        delete (CgiContext *)state;
     }
 }
 
 
  uint16_t WebInterface::HandleResponseEntry(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, void *connectionState)
  {
-    puts("HandleResponse\n");
-    auto pThis = (WebInterface *)connectionState;
-    return pThis->HandleResponse(tagIndex, pcInsert, iInsertLen, tagPart, nextPart);
+    auto ctx = (CgiContext *)connectionState;
+    return ctx->pThis->HandleResponse(tagIndex, pcInsert, iInsertLen, tagPart, nextPart, ctx->result);
  }
 
+// Note, max tag len is 8 chars!
 const char *tags[] = {
     "ssid",
     "ssidList",
-    "result"
+    "result",
+    "mqttAddr",
+    "mqttPort",
+    "mqttUser",
+    "mqttTopi"
 };
 
- uint16_t WebInterface::HandleResponse(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart)
+#define TAGINDEX_SSID 0
+#define TAGINDEX_SSIDLIST 1
+#define TAGINDEX_RESULT 2
+#define TAGINDEX_MQTTADDR 3
+#define TAGINDEX_MQTTPORT 4
+#define TAGINDEX_MQTTUSER 5
+#define TAGINDEX_MQTTTOPIC 6
+
+ uint16_t WebInterface::HandleResponse(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult)
  {
-    if(tagIndex == 0)
+    switch(tagIndex)
     {
-        printf("SSI: ssid\n");
-        auto cfg = _config.GetWifiConfig();
-        *pcInsert++ = '\"';
-        auto ssidLen = strlen(cfg->ssid);
-        auto safeLen = ssidLen < iInsertLen ? ssidLen : iInsertLen;
-        strncpy(pcInsert, cfg->ssid, safeLen);
-        pcInsert += safeLen;
-        *pcInsert++ = '\"';
-        return ssidLen + 2;
-    }
-    if(tagIndex == 1)
-    {
-        printf("SSI: ssids Index: %d\n", tagPart);
-        if(tagPart == 0)
+        case TAGINDEX_SSID:
         {
-            _wifiScanner.CollectResults();
+            auto cfg = _config.GetWifiConfig();
+            auto ssidLen = strnlen(cfg->ssid, sizeof(cfg->ssid));
+            memcpy(pcInsert, cfg->ssid, ssidLen);
+            return ssidLen;
         }
-
-        auto &ssids = _wifiScanner.GetSsids();
-        char *writeOff = pcInsert;
-        if(tagPart >= ssids.size())
-            return 0;
-
-        *writeOff++ = '\"';
-        auto len = ssids[tagPart].size();
-        memcpy(writeOff, ssids[tagPart].data(), len);
-        writeOff += len;
-        *writeOff++ = '\"';
-        if(tagPart + 1 != ssids.size())
+        case TAGINDEX_SSIDLIST:
         {
-            *writeOff++ = ',';
-            *nextPart = tagPart + 1;
+            if(tagPart == 0)
+            {
+                _wifiScanner.CollectResults();
+
+                // Trigger another WiFi Scan for next time the page refreshes
+                if(!_apMode)
+                    _wifiScanner.TriggerScan();
+            }
+
+            auto &ssids = _wifiScanner.GetSsids();
+            char *writeOff = pcInsert;
+            if(tagPart >= ssids.size())
+                return 0;
+
+            *writeOff++ = '\"';
+            auto len = ssids[tagPart].size();
+            memcpy(writeOff, ssids[tagPart].data(), len);
+            writeOff += len;
+            *writeOff++ = '\"';
+            if(tagPart + 1 != ssids.size())
+            {
+                *writeOff++ = ',';
+                *nextPart = tagPart + 1;
+            }
+
+            return writeOff - pcInsert;
+
         }
+        case TAGINDEX_RESULT:
+            if(cgiResult)
+            {
+                memcpy(pcInsert, "true", 4);
+                return 4;
+            }
+            memcpy(pcInsert, "false", 5);
+            return 5;
 
-        return writeOff - pcInsert;
-
-    }
-    if(tagIndex == 2)
-    {
-        memcpy(pcInsert, "true", 4);
-        return 4;
+        case TAGINDEX_MQTTADDR:
+        {
+            auto cfg = _config.GetMqttConfig();
+            auto len = strnlen(cfg->brokerAddress, sizeof(cfg->brokerAddress));
+            memcpy(pcInsert, cfg->brokerAddress, len);
+            return len;
+        }
+        case TAGINDEX_MQTTPORT:
+        {
+            auto cfg = _config.GetMqttConfig();
+            char buf[16];
+            auto len = sprintf(buf, "%d", cfg->port);
+            memcpy(pcInsert, buf, len);
+            return len;
+        }
+        case TAGINDEX_MQTTUSER:
+        {
+            auto cfg = _config.GetMqttConfig();
+            auto len = strnlen(cfg->username, sizeof(cfg->username));
+            memcpy(pcInsert, cfg->username, len);
+            return len;
+        }
+        case TAGINDEX_MQTTTOPIC:
+        {
+            auto cfg = _config.GetMqttConfig();
+            auto len = strnlen(cfg->topic, sizeof(cfg->topic));
+            if(len > iInsertLen)
+                len = iInsertLen;
+            memcpy(pcInsert, cfg->topic, len);
+            return len;
+        }
     }
 
     printf("Unknown SSI tag: %d\n", tagIndex);
@@ -108,64 +166,13 @@ const char *tags[] = {
 
 void WebInterface::Start()
 {
-    auto cfg = _config.GetWifiConfig();
-    _apMode = strlen(cfg->ssid) == 0;
-
-    cyw43_arch_enable_sta_mode();
-
-    _wifiScanner.TriggerScan();
-    _wifiScanner.WaitForScan();
-    _wifiScanner.CollectResults();
-
-    // In AP mode we will only scan WiFi once at startup, and then switch into AP Mode.
-    if(_apMode)
-    {
-        puts("Disabling scan mode");
-        cyw43_arch_disable_sta_mode();
-
-        const char *ap_name = "picow_test";
-        const char *password = "password";
-
-        puts("Enabling ap mode");
-        cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
-
-
-        ip4_addr_t host;
-        ip4_addr_t mask;
-        IP4_ADDR(ip_2_ip4(&host), 192, 168, 4, 1);
-        IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 0);
-
-        // Start the dhcp server
-        dhcp_server_init(&_dhcp_server, &host, &mask);
-        // Start the dns server
-        dns_server_init(&_dns_server, &host);
-
-    }
-    else
-    {
-        printf("Connecting to WiFi %s\n", cfg->ssid, cfg->password);
-        auto result = cyw43_arch_wifi_connect_blocking(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
-        if(result)
-        {
-            printf("Failed to connect\n: %d", result);
-        }
-        else
-            printf("Connected connect\n: %d", result);
-
-        _wifiWatchdogWorker.next = nullptr;
-        _wifiWatchdogWorker.do_work = WifiWatchdogEntry;
-        _wifiWatchdogWorker.user_data = this;
-
-        async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(), &_wifiWatchdogWorker, 10000);
-    }
-
     httpd_init();
 
     http_set_ssi_handler(HandleResponseEntry, tags, LWIP_ARRAYSIZE(tags));
 
 }
 
-void WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
+bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
 {
     printf("CGI executed: %s\n", uri);
 
@@ -176,57 +183,76 @@ void WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
 
     if(!strcmp(uri, "/api/configure.json"))
     {
-        const char *mode = nullptr;
-        const char *ssid = nullptr;
-        const char *password = nullptr;
-        const char *host = nullptr;
-        const char *port = nullptr;
-        const char *username = nullptr;
-
+        std::map<std::string, std::string> params;
         for(auto a = 0; a < iNumParams; a++)
         {
-            if(!strcmp(pcParam[a], "mode"))
-                mode = pcValue[a];
-            else if(!strcmp(pcParam[a], "ssid"))
-                ssid = pcValue[a];
-            else if(!strcmp(pcParam[a], "password"))
-                password = pcValue[a];
-            else if(!strcmp(pcParam[a], "host"))
-                host = pcValue[a];
-            else if(!strcmp(pcParam[a], "port"))
-                port = pcValue[a];
-            else if(!strcmp(pcParam[a], "username"))
-                username = pcValue[a];
+            params[pcParam[a]] = pcValue[a];
         }
 
-        if(mode != nullptr)
+        if(params["mode"] == "wifi")
         {
-            if(!strcmp(mode, "wifi") && ssid && password)
+            if(!params.count("ssid") ||
+                !params.count("password"))
+                return false;
+
+            WifiConfig cfg;
+            memset(&cfg, 0, sizeof(cfg));
+            strlcpy(cfg.ssid, params["ssid"].c_str(), sizeof(cfg.ssid));
+            auto &password = params["password"];
+            if(password == "********")
             {
-                WifiConfig cfg;
-                memset(&cfg, 0, sizeof(cfg));
-                strcpy(cfg.ssid, ssid);
-                strcpy(cfg.password, password);
-                _config.SaveWifiConfig(&cfg);
+                auto oldCConfig = _config.GetWifiConfig();
+                strlcpy(cfg.password, oldCConfig->password, sizeof(cfg.password));
             }
+
+            puts("Saving config\n");
+            _config.SaveWifiConfig(&cfg);
+            puts("Restarting service\n");
+            _service.StopService();
+            return true;
+        }
+        else if(params["mode"] == "mqtt")
+        {
+            puts("Setting MQTT config\n");
+            if(!params.count("host") ||
+                !params.count("port") ||
+                !params.count("username") ||
+                !params.count("password") ||
+                !params.count("topic"))
+            {
+                puts("Missing arguments\n");
+                return false;
+            }
+
+            MqttConfig cfg;
+            memset( &cfg, 0, sizeof(cfg));
+            strlcpy(cfg.brokerAddress, params["host"].c_str(), sizeof(cfg.brokerAddress));
+            sscanf(params["port"].c_str(), "%hu", &cfg.port);
+            strlcpy(cfg.username, params["username"].c_str(), sizeof(cfg.username));
+            auto &password = params["password"];
+            if(password == "********")
+            {
+                auto oldCConfig = _config.GetMqttConfig();
+                strlcpy(cfg.password, oldCConfig->password, sizeof(cfg.password));
+            }
+            else
+                strlcpy(cfg.password, password.c_str(), sizeof(cfg.password));
+            strlcpy(cfg.topic, params["topic"].c_str(), sizeof(cfg.topic));
+
+
+            puts("Saving config\n");
+            _config.SaveMqttConfig(&cfg);
+            puts("Restarting service\n");
+            _service.StopService();
+            return true;
+        }
+        else if(params["mode"] == "firmware")
+        {
+            puts("Requesting firmware reboot\n");
+            _service.StopService(true);
+            return true;
         }
     }
+
+    return false;
 }
-
- void WebInterface::WifiWatchdogEntry(async_context_t *context, async_at_time_worker_t *worker) {
-
-    auto pThis = (WebInterface *)worker->user_data;
-    pThis->WifiWatchdog(context);
-}
-
-void WebInterface::WifiWatchdog(async_context_t *context)
-{
-    printf("Woof\n");
-    auto state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
-    // Indicate the state with the LED
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, state == CYW43_LINK_JOIN);
-
-    // Restart timer
-    async_context_add_at_time_worker_in_ms(context, &_wifiWatchdogWorker, 60000);
-}
-

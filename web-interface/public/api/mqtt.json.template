@@ -1,0 +1,7 @@
+{
+    "address": "<!--#mqttAddr-->",
+    "port": <!--#mqttPort-->,
+    "username": "<!--#mqttUser-->",
+    "password": "********",
+    "topic": "<!--#mqttTopi-->"
+}

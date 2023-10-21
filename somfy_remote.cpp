@@ -1,17 +1,22 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/pio.h"
+#include "hardware/watchdog.h"
 #include "pico/cyw43_arch.h"
 #include "pico/flash.h"
+#include "pico/bootrom.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
 #include "radio.h"
 #include "remote.h"
-#include "webInterface.h"
+#include "wifiConnection.h"
 #include "wifiScanner.h"
+#include "webInterface.h"
+#include "mqttClient.h"
 #include "blockStorage.h"
 #include "deviceConfig.h"
+#include "serviceControl.h"
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
@@ -27,29 +32,6 @@
 #define PIN_CS_RADIO   5
 // Hardware reset
 #define PIN_RESET_RADIO 15
-
-// This "worker" function is called to safely perform work when instructed by key_pressed_func
-void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker) {
-    assert(worker->user_data);
-    printf("Terminating\n");
-    *(bool *)(worker->user_data) = true;
-}
-
-static async_when_pending_worker_t key_pressed_worker = {
-        .next = NULL,
-        .do_work = key_pressed_worker_func
-};
-
-void key_pressed_func(void *param) {
-    assert(param);
-    int key = getchar_timeout_us(0); // get any pending key press but don't wait
-    printf("%c", key);
-    if (key == 'd' || key == 'D') {
-        // We are probably in irq context so call wifi in a "worker"
-        async_context_set_work_pending((async_context_t *)param, &key_pressed_worker);
-    }
-}
-
 
 
 int main()
@@ -93,7 +75,8 @@ int main()
 
     puts("Checking Device config...\n");
 
-    if(config.GetWifiConfig() == nullptr ||
+    auto wifiConfig = config.GetWifiConfig();
+    if(wifiConfig == nullptr ||
         config.GetMqttConfig() == nullptr)
     {
         puts("Settings could not be read back. Error!\n");
@@ -106,16 +89,40 @@ int main()
     // Get notified if the user presses a key
     auto context = cyw43_arch_async_context();
     auto quit = false;
-    key_pressed_worker.user_data = &quit;
-    async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
-    stdio_set_chars_available_callback(key_pressed_func, context);
 
-    auto webInterface = WebInterface::GetInstance(config);
-    webInterface->Start();
+    ServiceControl service;
+
+    // TODO: Read an input pin for forcing AP mode
+    auto apMode = !wifiConfig->ssid[0];
+
+    WifiConnection wifiConnection(config, apMode);
+
+    // Do an initial WiFi scan before entering AP mode
+    WifiScanner wifiScanner;
+    wifiScanner.TriggerScan();
+    wifiScanner.WaitForScan();
+    wifiScanner.CollectResults();    
+
+    // Now connect to WiFi or Enable AP mode
+    wifiConnection.Start();
+
+    WebInterface webInterface(config, service, wifiConnection, wifiScanner, apMode);
+    webInterface.Start();
+
+    MqttClient mqttClient(config, wifiConnection, "pico_somfy/status", "online", "offline");
+    if(!apMode)
+    {
+        mqttClient.Start();
+
+        mqttClient.Subscribe("pico_somfy/test", [](const uint8_t *msg, uint32_t len) {
+            printf("Message recieved: %.*s\n", len, msg);
+        });
+    }
 
     auto onOff = false;
 
-    while(!quit) {
+    puts("Entering main loop...\n");
+    while(!service.IsStopRequested()) {
 
         // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
         // is done via interrupt in the background. This sleep is just an example of some (blocking)
@@ -126,7 +133,19 @@ int main()
         onOff = !onOff;
     }
 
-    puts("Exiting now\n");
+    puts("Restarting now!\n");
+    sleep_ms(1000);
+
+    if(service.IsFirmwareUpdateRequested())
+    {
+        reset_usb_boot(0,0);
+    }
+    else
+    {
+        watchdog_reboot(0,0,500);
+    }
+    sleep_ms(5000);
+    puts("ERM!!! Why no reboot?\n");
 
     // dns_server_deinit(&dns_server);
     // dhcp_server_deinit(&dhcp_server);

@@ -1,0 +1,11 @@
+.toast-target {
+    position: relative;
+    top: 0;
+}
+
+.toast-list {
+    position: fixed;
+    top: 0;
+    right: 0;
+    margin: 40px;
+}
