@@ -21,8 +21,10 @@ class Blinds
             std::shared_ptr<WebServer> webServer);
 
     private:
-        void DoAddBlind(const uint8_t *payload, uint32_t length);
-        void DoDeleteBlind(const uint8_t *payload, uint32_t length);
+        bool DoAddBlind(const CgiParams &params);
+        bool DoUpdateBlind(const CgiParams &params);
+        bool DoDeleteBlind(const CgiParams &params);
+        bool DoBlindCommand(const CgiParams &params);
 
         uint32_t _nextId;
         std::map<uint32_t, std::unique_ptr<Blind>> _blinds;
@@ -32,7 +34,9 @@ class Blinds
         std::shared_ptr<MqttClient> _mqttClient;
         std::shared_ptr<WebServer> _webServer;
 
-        CgiSubscription _addBlindSubscription;
-        CgiSubscription _deleteBlindSubscription;
+        CgiSubscription _addBlind;
+        CgiSubscription _updateBlind;
+        CgiSubscription _deleteBlind;
+        CgiSubscription _blindCommand;
 };
 

@@ -7,21 +7,22 @@
 class WifiScanner
 {
     public:
-        WifiScanner();
+        WifiScanner(bool oneTimScan);
 
-        void TriggerScan();
         void WaitForScan();
         void CollectResults();
 
         const std::vector<std::string> &GetSsids() { return _ssids; }
 
     private:
+        void TriggerScan();
 
         static int ScanResultEntry(void *env, const cyw43_ev_scan_result_t *result);
         int ScanResult(const cyw43_ev_scan_result_t *result);
 
         std::vector<std::string> _activeResults;
         std::vector<std::string> _ssids;
-
+       
         bool _isScanActive;
+        bool _oneTimeScan;
 };

@@ -37,6 +37,7 @@ add_executable(somfy_remote
   wifiConnection.cpp
   wifiScanner.cpp
   blockStorage.cpp
+  configService.cpp
   deviceConfig.cpp
   mqttClient.cpp
   dhcpserver/dhcpserver.c

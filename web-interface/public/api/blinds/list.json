@@ -1,0 +1,10 @@
+[
+    {
+        "id": 1,
+        "name": "Blind 1",
+        "position": 100,
+        "openTime": 30,
+        "closeTime": 30,
+        "remoteId": 5000
+    }
+]

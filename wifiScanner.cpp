@@ -8,8 +8,10 @@
 #include "wifiScanner.h"
 
 
-WifiScanner::WifiScanner()
+WifiScanner::WifiScanner(bool oneTimeScan)
+:   _oneTimeScan(oneTimeScan)
 {
+    TriggerScan();
 }
 
 void WifiScanner::TriggerScan()
@@ -47,6 +49,10 @@ void WifiScanner::CollectResults()
     printf("%d new SSID results found", _activeResults.size());
     std::swap(_ssids, _activeResults);
     _activeResults.clear();
+
+    // Trigger another scan so we have new results next time the caller asks
+    if(!_oneTimeScan)
+        TriggerScan();
 }
 
 

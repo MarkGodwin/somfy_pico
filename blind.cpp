@@ -5,6 +5,7 @@
 #include "remote.h"
 #include <string.h>
 #include <math.h>
+#include "deviceConfig.h"
 
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
@@ -29,12 +30,12 @@ Blind::Blind(
     _mqttClient(mqttClient),
     _motionDirection(0),
     _cmdSubscription(mqttClient, string_format("pico_somfy/blinds/{%08x}/cmd", blindId),[this](const uint8_t *payload, uint32_t length) { OnCommand(payload, length); }),
-    _posSubscription(mqttClient, string_format("pico_somfy/blinds/{%08x}/pos", blindId),[this](const uint8_t *payload, uint32_t length) { OnSetPosition(payload, length); }),
-    _cmdCgiSubscription(webServer, blindId, "blindcmd", [this](const uint8_t *payload, uint32_t length) { OnCommand(payload, length); }),
-    _posCgiSubscription(webServer, blindId, "blindpos", [this](const uint8_t *payload, uint32_t length) { OnSetPosition(payload, length); })
+    _posSubscription(mqttClient, string_format("pico_somfy/blinds/{%08x}/pos", blindId),[this](const uint8_t *payload, uint32_t length) { OnSetPosition(payload, length); })
 {
     _targetPosition = config->currentPosition;
     _intermediatePosition = _targetPosition;
+
+    printf("Blind ID %d: %s\n", _blindId, config->blindName);
 }
 
 Blind::~Blind()
@@ -55,13 +56,42 @@ void Blind::GoToPosition(int position)
         _remote->PressButtons(SomfyButton::Up, ShortPress);
         _motionDirection = 1;
     }
-
 }
+
+void Blind::GoUp()
+{
+    _remote->PressButtons(SomfyButton::Up, ShortPress);
+    ButtonsPressed(SomfyButton::Up);
+}
+
+void Blind::GoDown()
+{
+    _remote->PressButtons(SomfyButton::Down, ShortPress);
+    ButtonsPressed(SomfyButton::Down);
+}
+
+void Blind::Stop()
+{
+    if(_motionDirection)
+    {
+        _remote->PressButtons(SomfyButton::Down, ShortPress);
+        ButtonsPressed(SomfyButton::My);
+    }
+}
+
 
 void Blind::GoToMyPosition()
 {
+    if(_motionDirection)
+        return;
     _targetPosition = _favouritePosition;
     _remote->PressButtons(SomfyButton::My, ShortPress);
+    if(_intermediatePosition < _targetPosition)
+        _motionDirection = 1;
+    else if(_intermediatePosition > _targetPosition)
+        _motionDirection = -1;
+    else
+        _motionDirection = 0;
 }
 
 void Blind::ButtonsPressed(SomfyButton button)
@@ -109,23 +139,11 @@ void Blind::UpdatePosition()
 void Blind::OnCommand(const uint8_t *payload, uint32_t length)
 {
     if(length == 4 && !memcmp(payload, "open", 4))
-    {
-        _remote->PressButtons(SomfyButton::Up, ShortPress);
-        ButtonsPressed(SomfyButton::Up);
-    }
+        GoUp();
     else if(length == 5 && !memcmp(payload, "close", 5))
-    {
-        _remote->PressButtons(SomfyButton::Down, ShortPress);
-        ButtonsPressed(SomfyButton::Down);
-    }
+        GoDown();
     else if(length == 4 && !memcmp(payload, "stop", 4))
-    {
-        if(_motionDirection)
-        {
-            _remote->PressButtons(SomfyButton::Down, ShortPress);
-            ButtonsPressed(SomfyButton::My);
-        }
-    }
+        Stop();
 }
 
 void Blind::OnSetPosition(const uint8_t *payload, uint32_t length)

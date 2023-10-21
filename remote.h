@@ -23,6 +23,7 @@ public:
     SomfyRemote(RFM69Radio *radio, uint32_t remoteId, uint16_t rollingCode);
 
     uint16_t GetRollingCode() { return _rollingCode; }
+    uint32_t GetRemoteId() { return _remoteId; }
 
     // Press buttons on the controller. Note that buttons can be chorded.
     void PressButtons(SomfyButton buttons, uint16_t repeat);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "wifiScanner.h"
 #include "dhcpserver.h"
 #include "dnsserver.h"
 #include <memory>
@@ -10,58 +9,81 @@
 class DeviceConfig;
 class ServiceControl;
 class IWifiConnection;
-class WifiScanner;
 
+typedef std::map<std::string, std::string> CgiParams;
+typedef std::function<bool(const CgiParams &)> CgiSubscribeFunc;
 
-typedef std::function<void(const uint8_t *, uint32_t)> CgiSubscribeFunc;
+typedef std::function<uint16_t(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart)> SsiSubscribeFunc;
 
 
 class WebServer
 {
     public:
-        WebServer(std::shared_ptr<DeviceConfig> config, ServiceControl &service, std::shared_ptr<IWifiConnection> wifiConnection, std::shared_ptr<WifiScanner> wifiScanner, bool apMode);
+        WebServer(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifiConnection);
 
         void Start();
 
         bool HandleRequest(struct fs_file *file, const char* uri, int iNumParams, char **pcParam, char **pcValue);
 
-        void SubscribeCommand(uint32_t objectId, std::string command, CgiSubscribeFunc &&callback);
-        void UnsubscribeCommand(uint32_t objectId, std::string command);
+        void AddRequestHandler(std::string url, CgiSubscribeFunc &&callback);
+        void RemoveRequestHandler(std::string url);
+
+        void AddResponseHandler(std::string tag, SsiSubscribeFunc &&callback);
+        void RemoveResponseHandler(std::string tag);
 
     private:
 
-        static uint16_t HandleResponseEntry(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, void *connectionState);
-        uint16_t HandleResponse(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult);
+        static uint16_t HandleResponseEntry(const char *tag, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, void *connectionState);
+        uint16_t HandleResponse(const char *tag, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult);
 
-        bool DispatchCommand(int iNumParams, char **pcParam, char **pcValue);
-
-        bool _apMode;
         std::shared_ptr<DeviceConfig> _config;
-        ServiceControl &_service;
         std::shared_ptr<IWifiConnection> _wifiConnection;
-        std::shared_ptr<WifiScanner> _wifiScanner;
 
-        std::map<std::pair<uint32_t, std::string>, CgiSubscribeFunc> _subscriptions;
+        std::map<std::string, CgiSubscribeFunc> _requestSubscriptions;
+        std::map<std::string, SsiSubscribeFunc> _responseSubscriptions;
 
 };
 
 class CgiSubscription
 {
     public:
-        CgiSubscription(std::shared_ptr<WebServer> webInterface, uint32_t objectId, std::string command, CgiSubscribeFunc &&callback)
+        CgiSubscription(std::shared_ptr<WebServer> webInterface, std::string url, CgiSubscribeFunc &&callback)
         :   _webInterface(webInterface),
-             _objectId(objectId),
-             _command(std::move(_command))
+             _url(std::move(url))
         {
-            _webInterface->SubscribeCommand(_objectId, _command, std::forward<CgiSubscribeFunc>(callback));
+            _webInterface->AddRequestHandler(_url, std::forward<CgiSubscribeFunc>(callback));
         }
 
         ~CgiSubscription()
         {
-            _webInterface->UnsubscribeCommand(_objectId, _command);
+            _webInterface->RemoveRequestHandler(_url);
         }
     private:
+        CgiSubscription(const CgiSubscription &) = delete;
+
         std::shared_ptr<WebServer> _webInterface;
-        uint32_t _objectId;
-        std::string _command;
+        std::string _url;
+};
+
+class SsiSubscription
+{
+    public:
+        SsiSubscription(std::shared_ptr<WebServer> webInterface, std::string tag, SsiSubscribeFunc &&callback)
+        :   _webInterface(webInterface),
+             _tag(std::move(tag))
+        {
+            _webInterface->AddResponseHandler(_tag, std::forward<SsiSubscribeFunc>(callback));
+        }
+
+        ~SsiSubscription()
+        {
+            _webInterface->RemoveResponseHandler(_tag);
+        }
+
+    private:
+        SsiSubscription(const SsiSubscription &) = delete;
+        std::shared_ptr<WebServer> _webInterface;
+        std::string _tag;
+
+
 };

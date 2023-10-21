@@ -10,11 +10,14 @@
 
 #include "radio.h"
 #include "remote.h"
+#include "remotes.h"
+#include "blinds.h"
 #include "wifiConnection.h"
 #include "wifiScanner.h"
 #include "webInterface.h"
 #include "mqttClient.h"
 #include "blockStorage.h"
+#include "configService.h"
 #include "deviceConfig.h"
 #include "serviceControl.h"
 
@@ -88,7 +91,7 @@ int main()
     auto context = cyw43_arch_async_context();
     auto quit = false;
 
-    ServiceControl service;
+    auto service = std::make_shared<ServiceControl>();
 
     // TODO: Read an input pin for forcing AP mode
     auto apMode = !wifiConfig->ssid[0];
@@ -96,16 +99,16 @@ int main()
     auto wifiConnection = std::make_shared<WifiConnection>(config, apMode);
 
     // Do an initial WiFi scan before entering AP mode
-    auto wifiScanner = std::make_shared<WifiScanner>();
-    wifiScanner->TriggerScan();
+    auto wifiScanner = std::make_shared<WifiScanner>(apMode);
     wifiScanner->WaitForScan();
-    wifiScanner->CollectResults();    
 
     // Now connect to WiFi or Enable AP mode
     wifiConnection->Start();
 
-    auto webInterface = std::make_shared<WebServer>(config, service, wifiConnection, wifiScanner, apMode);
-    webInterface->Start();
+    auto webServer = std::make_shared<WebServer>(config, wifiConnection);
+    webServer->Start();
+
+    auto configService = std::make_shared<ConfigService>(config, webServer, wifiScanner, service);
 
     auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline");
     if(!apMode)
@@ -117,10 +120,14 @@ int main()
         });
     }
 
+    auto remotes = std::make_shared<SomfyRemotes>();
+
+    auto blinds = std::make_shared<Blinds>(remotes, config, mqttClient, webServer);
+
     auto onOff = false;
 
     puts("Entering main loop...\n");
-    while(!service.IsStopRequested()) {
+    while(!service->IsStopRequested()) {
 
         // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
         // is done via interrupt in the background. This sleep is just an example of some (blocking)
@@ -134,7 +141,7 @@ int main()
     puts("Restarting now!\n");
     sleep_ms(1000);
 
-    if(service.IsFirmwareUpdateRequested())
+    if(service->IsFirmwareUpdateRequested())
     {
         reset_usb_boot(0,0);
     }

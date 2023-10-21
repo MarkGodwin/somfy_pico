@@ -1,6 +1,7 @@
 
 
 #include "pico/stdlib.h"
+#include <string.h>
 
 #include "blinds.h"
 #include "deviceConfig.h"
@@ -16,14 +17,17 @@ Blinds::Blinds(
     _config(std::move(config)),
     _mqttClient(std::move(mqttClient)),
     _webServer(webServer),
-    _addBlindSubscription(_webServer, 0, "addblind", [this](const uint8_t *payload, uint32_t length) { DoAddBlind(payload, length); }),
-    _deleteBlindSubscription(_webServer, 0, "deleteblind", [this](const uint8_t *payload, uint32_t length) { DoDeleteBlind(payload, length); }),
+    _addBlind(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }),
+    _updateBlind(_webServer, "/api/blinds/update.json", [this](const CgiParams &params) { return DoUpdateBlind(params); }),
+    _deleteBlind(_webServer, "/api/blinds/delete.json", [this](const CgiParams &params) { return DoDeleteBlind(params); }),
+    _blindCommand(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }),
     _nextId(1)
 {
 
     uint32_t count;
     const uint16_t *blindids = _config->GetBlindIds(&count);
 
+    printf("There are %d blinds registered\n", count);
 
     for(auto a = 0; a < count; a++)
     {
@@ -35,24 +39,84 @@ Blinds::Blinds(
 }
 
 
-void Blinds::DoAddBlind(const uint8_t *payload, uint32_t length)
+bool Blinds::DoAddBlind(const CgiParams &params)
 {
     // Create a new blind, and a new remote for the blind
     auto newRemote = _remotes->CreateRemote();
     auto newId = _nextId++;
 
-    BlindConfig cfg;
-    strncpy(cfg.blindName, payload);
-    cfg.currentPosition = 100;
-    cfg.myPosition = 50;
-    cfg.
+    auto nameParam = params.find("name");
+    auto openTimeParam = params.find("openTime");
+    auto closeTimeParam = params.find("closeTime");
 
-    _blinds.insert({newId, std::make_unique<Blind>(newId, 
+    if(nameParam == params.end() ||
+       openTimeParam == params.end() ||
+       closeTimeParam == params.end())
+    {
+        puts("Missing arguments to AddBlind");
+        return false;
+    }
+
+    BlindConfig cfg;
+    strcpy(cfg.blindName, nameParam->second.c_str());
+    cfg.currentPosition = 90;
+    cfg.myPosition = 50;
+    cfg.remoteId = newRemote->GetRemoteId();
+    cfg.openTime = atoi(openTimeParam->second.c_str());
+    cfg.closeTime = atoi(closeTimeParam->second.c_str());
+
+    _blinds.insert({newId, std::make_unique<Blind>(newId, &cfg, newRemote, _mqttClient, _webServer)});
+
+    return true;
 }
 
-void Blinds::DoDeleteBlind(const uint8_t *payload, uint32_t length)
+bool Blinds::DoUpdateBlind(const CgiParams &params)
+{
+    // Create a new blind, and a new remote for the blind
+
+    return true;
+}
+
+
+
+bool Blinds::DoDeleteBlind(const CgiParams &params)
 {
     // TODO!
+    return false;
 }
 
+bool Blinds::DoBlindCommand(const CgiParams &params)
+{
+    auto idParam = params.find("id");
+    auto commandParam = params.find("command");
+    auto payloadParam = params.find("payload");
+
+    if(idParam == params.end() || commandParam == params.end() || payloadParam == params.end())
+    {
+        puts("Bad command received - missing arguments\n");
+        return false;
+    }
+
+    uint32_t id;
+    if(!sscanf(idParam->second.c_str(), "%d", &id))
+    {
+        printf("Can't read ID %s\n", idParam->second.c_str());
+        return false;
+    }
+
+    auto blindEntry = _blinds.find(id);
+    if(blindEntry == _blinds.end())
+    {
+        printf("No blind found with ID %d\n", id);
+        return false;
+    }
+
+    if(commandParam->second == "cmd")
+        blindEntry->second->OnCommand((const uint8_t *)payloadParam->second.c_str(), payloadParam->second.length());
+    else if(commandParam->second == "pos")
+        blindEntry->second->OnSetPosition((const uint8_t *)payloadParam->second.c_str(), payloadParam->second.length());
+    else
+        printf("Unexpected command: %s", commandParam->second.c_str());
+    return true;
+}
 
