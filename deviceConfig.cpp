@@ -65,7 +65,31 @@ const BlindConfig *DeviceConfig::GetBlindConfig(uint16_t blindId)
 
 void DeviceConfig::SaveBlindConfig(uint16_t blindId, const BlindConfig *blindConfig)
 {
+    // Don't save if there are no changes, to avoid flash wear
+    auto existingCfg = GetBlindConfig(blindId);
+    if(existingCfg &&
+        *blindConfig == *existingCfg)
+    {
+        return;
+    }
     _storage.SaveBlock(blindConfigMagic | blindId, (const uint8_t *)blindConfig, sizeof(blindConfig));
+}
+
+const RemoteConfig *DeviceConfig::GetRemoteConfig(uint32_t remoteId)
+{
+    return (RemoteConfig *)_storage.GetBlock(remoteConfigMagic | (remoteId & 0xFFFF));
+}
+
+void DeviceConfig::SaveRemoteConfig(uint32_t remoteId, const RemoteConfig *remoteConfig)
+{
+    // Don't save if there are no changes, to avoid flash wear
+    auto existingCfg = GetRemoteConfig(remoteId);
+    if(existingCfg &&
+        *remoteConfig == *existingCfg)
+    {
+        return;
+    }
+    _storage.SaveBlock(remoteConfigMagic | (remoteId & 0xFFFF), (const uint8_t *)remoteConfig, sizeof(remoteConfig));
 }
 
 const uint16_t *DeviceConfig::GetRemoteIds(uint32_t *count)
@@ -121,4 +145,23 @@ const uint16_t *DeviceConfig::GetIdList(uint32_t header, uint32_t *count)
     }
     *count = *block;
     return (const uint16_t *)(block + 1);
+}
+
+bool operator==(const RemoteConfig &left, const RemoteConfig &right)
+{
+    return left.remoteId == right.remoteId &&
+        left.rollingCode == right.rollingCode &&
+        left.blindCount == right.blindCount &&
+        !memcmp(left.blinds, right.blinds, sizeof(left.blinds[0]) * left.blindCount) &&
+        !strcmp(left.remoteName, right.remoteName);
+}
+
+bool operator==(const BlindConfig &left, const BlindConfig &right)
+{
+    return !strcmp(left.blindName, right.blindName) &&
+        left.currentPosition == right.currentPosition &&
+        left.myPosition == right.myPosition &&
+        left.openTime == right.openTime &&
+        left.closeTime == right.closeTime &&
+        left.remoteId == right.remoteId;
 }

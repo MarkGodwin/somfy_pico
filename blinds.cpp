@@ -9,20 +9,19 @@
 
 
 Blinds::Blinds(
-    std::shared_ptr<SomfyRemotes> remotes,
     std::shared_ptr<DeviceConfig> config,
     std::shared_ptr<MqttClient> mqttClient,
     std::shared_ptr<WebServer> webServer)
-:   _remotes(std::move(remotes)),
-    _config(std::move(config)),
+:   _config(std::move(config)),
     _mqttClient(std::move(mqttClient)),
     _webServer(webServer),
-    _addBlind(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }),
-    _updateBlind(_webServer, "/api/blinds/update.json", [this](const CgiParams &params) { return DoUpdateBlind(params); }),
-    _deleteBlind(_webServer, "/api/blinds/delete.json", [this](const CgiParams &params) { return DoDeleteBlind(params); }),
-    _blindCommand(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }),
     _nextId(1)
 {
+}
+
+void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
+{
+    _remotes = remotes;
 
     uint32_t count;
     const uint16_t *blindids = _config->GetBlindIds(&count);
@@ -34,17 +33,18 @@ Blinds::Blinds(
         if(blindids[a] >= _nextId)
             _nextId = blindids[a] + 1;
         auto cfg = _config->GetBlindConfig(blindids[a]);
-        _blinds.insert({blindids[a], std::make_unique<Blind>(blindids[a], cfg, remotes->GetRemote(cfg->remoteId), _mqttClient, _webServer)});
+        _blinds.insert({blindids[a], std::make_unique<Blind>(blindids[a], cfg, _remotes->GetRemote(cfg->remoteId), _mqttClient, _webServer)});
     }
+
+    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }));
+    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/update.json", [this](const CgiParams &params) { return DoUpdateBlind(params); }));
+    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/delete.json", [this](const CgiParams &params) { return DoDeleteBlind(params); }));
+    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }));
 }
 
 
 bool Blinds::DoAddBlind(const CgiParams &params)
 {
-    // Create a new blind, and a new remote for the blind
-    auto newRemote = _remotes->CreateRemote();
-    auto newId = _nextId++;
-
     auto nameParam = params.find("name");
     auto openTimeParam = params.find("openTime");
     auto closeTimeParam = params.find("closeTime");
@@ -56,6 +56,10 @@ bool Blinds::DoAddBlind(const CgiParams &params)
         puts("Missing arguments to AddBlind");
         return false;
     }
+
+    // Create a new blind, and a new remote for the blind
+    auto newRemote = _remotes->CreateRemote(nameParam->second);
+    auto newId = _nextId++;
 
     BlindConfig cfg;
     strcpy(cfg.blindName, nameParam->second.c_str());

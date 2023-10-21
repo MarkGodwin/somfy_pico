@@ -24,8 +24,23 @@ struct BlindConfig
     int myPosition;
     int openTime;
     int closeTime;
+    // Primary remote for controlling this blind
     uint32_t remoteId;
 };
+
+struct RemoteConfig
+{
+    char remoteName[48];
+    uint32_t remoteId;
+    uint16_t rollingCode;
+    uint16_t blindCount;
+    // The blinds we at least think are associated with this remote
+    uint16_t blinds[32];
+};
+
+bool operator==(const BlindConfig &left, const BlindConfig &right);
+
+bool operator==(const RemoteConfig &left, const RemoteConfig &right);
 
 class DeviceConfig
 {
@@ -40,11 +55,18 @@ class DeviceConfig
 
         const uint16_t *GetBlindIds(uint32_t *count);
         void SaveBlindIds(const uint16_t *blindIds, uint32_t count);
+
+        /// @brief Get the IDs of all the registered remotes
+        /// @param count [out] number of remotes registered
+        /// @return For reasons, only the lower 16 bits of the ID is returned. You need to use a fixed upper 8 bits
         const uint16_t *GetRemoteIds(uint32_t *count);
         void SaveRemoteIds(const uint16_t *blindIds, uint32_t count);
 
         const BlindConfig *GetBlindConfig(uint16_t blindId);
         void SaveBlindConfig(uint16_t blindId, const BlindConfig *blindConfig);
+
+        const RemoteConfig *GetRemoteConfig(uint32_t remoteId);
+        void SaveRemoteConfig(uint32_t remoteId, const RemoteConfig *remoteConfig);
 
         void HardReset();
 

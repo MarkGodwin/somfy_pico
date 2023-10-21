@@ -54,12 +54,19 @@ class CgiSubscription
             _webInterface->AddRequestHandler(_url, std::forward<CgiSubscribeFunc>(callback));
         }
 
+        CgiSubscription(CgiSubscription &&other)
+        :   _webInterface(std::move(other._webInterface)),
+            _url(std::move(other._url))
+        {
+        }
+
         ~CgiSubscription()
         {
-            _webInterface->RemoveRequestHandler(_url);
+            if(_webInterface)
+                _webInterface->RemoveRequestHandler(_url);
         }
     private:
-        CgiSubscription(const CgiSubscription &) = delete;
+        CgiSubscription(const CgiSubscription &) = delete;        
 
         std::shared_ptr<WebServer> _webInterface;
         std::string _url;
@@ -75,9 +82,17 @@ class SsiSubscription
             _webInterface->AddResponseHandler(_tag, std::forward<SsiSubscribeFunc>(callback));
         }
 
+        SsiSubscription(SsiSubscription &&other)
+        :   _webInterface(std::move(other._webInterface)),
+            _tag(std::move(other._tag))
+        {
+        }
+
+
         ~SsiSubscription()
         {
-            _webInterface->RemoveResponseHandler(_tag);
+            if(_webInterface)
+                _webInterface->RemoveResponseHandler(_tag);
         }
 
     private:

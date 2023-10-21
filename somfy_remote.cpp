@@ -20,6 +20,7 @@
 #include "configService.h"
 #include "deviceConfig.h"
 #include "serviceControl.h"
+#include "commandQueue.h"
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
@@ -57,11 +58,6 @@ int main()
         return -1;
     }
 
-    if(!flash_safe_execute_core_init())
-    {
-        printf("Flash init failed");
-        return -1;
-    }
 
     // Store flash settings at the very top of Flash memory
     // ALL STORED DATA WILL BE LOST IF THESE ARE CHANGED
@@ -86,10 +82,6 @@ int main()
 
 
     puts("Starting the web interface...\n");
-
-    // Get notified if the user presses a key
-    auto context = cyw43_arch_async_context();
-    auto quit = false;
 
     auto service = std::make_shared<ServiceControl>();
 
@@ -120,23 +112,31 @@ int main()
         });
     }
 
-    auto remotes = std::make_shared<SomfyRemotes>();
+    auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
+    auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
 
-    auto blinds = std::make_shared<Blinds>(remotes, config, mqttClient, webServer);
+    auto blinds = std::make_shared<Blinds>(config, mqttClient, webServer);
+    auto remotes = std::make_shared<SomfyRemotes>(config, blinds, commandQueue);
+    blinds->Initialize(remotes);
 
     auto onOff = false;
+
+    
+    puts("Starting worker thread...\n");
+    commandQueue->Start();
 
     puts("Entering main loop...\n");
     while(!service->IsStopRequested()) {
 
-        // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
-        // is done via interrupt in the background. This sleep is just an example of some (blocking)
-        // work you might be doing.
+        // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
         sleep_ms(1000);
 
         gpio_put(PIN_LED, onOff);
         onOff = !onOff;
     }
+
+    puts("Waiting for the command queue to clear...\n");
+    commandQueue->Shutdown();
 
     puts("Restarting now!\n");
     sleep_ms(1000);

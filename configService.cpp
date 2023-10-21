@@ -24,14 +24,14 @@ ConfigService::ConfigService(
    _serviceControl(std::move(serviceControl))
 {
 
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "ssid", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleWifiConfigResponse(TAGINDEX_SSID, pcInsert, iInsertLen, tagPart, nextPart); }));
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "ssidList", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleWifiConfigResponse(TAGINDEX_SSIDLIST, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "ssid", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleWifiConfigResponse(TAGINDEX_SSID, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "ssidList", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleWifiConfigResponse(TAGINDEX_SSIDLIST, pcInsert, iInsertLen, tagPart, nextPart); }));
 
     // TODO: std::bind should make this cleaner, if only it would compile.
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "mqttAddr", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTADDR, pcInsert, iInsertLen, tagPart, nextPart); }));
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "mqttPort", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTPORT, pcInsert, iInsertLen, tagPart, nextPart); }));
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "mqttUser", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTUSER, pcInsert, iInsertLen, tagPart, nextPart); }));
-    _ssiHandlers.push_back(std::make_unique<SsiSubscription>(webServer, "mqttTopi", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTTOPIC, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "mqttPort", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTPORT, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "mqttUser", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTUSER, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "mqttTopi", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTTOPIC, pcInsert, iInsertLen, tagPart, nextPart); }));
+    _ssiHandlers.push_back(SsiSubscription(webServer, "mqttAddr", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return HandleMqttConfigResponse(TAGINDEX_MQTTADDR, pcInsert, iInsertLen, tagPart, nextPart); }));
 
 }
 

@@ -15,10 +15,16 @@ class Blinds
 {
     public:
         Blinds(
-            std::shared_ptr<SomfyRemotes> remotes,
             std::shared_ptr<DeviceConfig> config,
             std::shared_ptr<MqttClient> mqttClient,
             std::shared_ptr<WebServer> webServer);
+
+        void Initialize(std::shared_ptr<SomfyRemotes> remotes);
+
+        const std::unique_ptr<Blind> &GetBlind(uint16_t blindId)
+        {
+            return _blinds.at(blindId);
+        }
 
     private:
         bool DoAddBlind(const CgiParams &params);
@@ -34,9 +40,6 @@ class Blinds
         std::shared_ptr<MqttClient> _mqttClient;
         std::shared_ptr<WebServer> _webServer;
 
-        CgiSubscription _addBlind;
-        CgiSubscription _updateBlind;
-        CgiSubscription _deleteBlind;
-        CgiSubscription _blindCommand;
+        std::list<CgiSubscription> _cgiSubscriptions;
 };
 

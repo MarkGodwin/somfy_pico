@@ -8,6 +8,7 @@
 class ServiceControl;
 class WifiScanner;
 
+/// @brief Handles configuration via the web interface
 class ConfigService
 {
     public:
@@ -29,5 +30,5 @@ class ConfigService
 
         CgiSubscription _configController;
 
-        std::list<std::unique_ptr<SsiSubscription>> _ssiHandlers;
+        std::list<SsiSubscription> _ssiHandlers;
 };

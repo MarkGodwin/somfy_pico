@@ -33,6 +33,7 @@ add_executable(somfy_remote
   blinds.cpp
   blind.cpp
   scheduler.cpp
+  commandQueue.cpp
   webInterface.cpp
   wifiConnection.cpp
   wifiScanner.cpp
@@ -66,6 +67,7 @@ target_include_directories(somfy_remote PRIVATE
 target_link_libraries(somfy_remote 
         hardware_spi
         hardware_pio
+        pico_multicore
         pico_cyw43_arch_lwip_threadsafe_background
         pico_lwip_http
         pico_lwip_mqtt

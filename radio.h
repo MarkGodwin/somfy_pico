@@ -1,5 +1,7 @@
 #pragma once
 
+#include "hardware/spi.h"
+
 
 class RFM69Radio
 {
