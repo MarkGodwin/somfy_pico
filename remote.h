@@ -56,7 +56,9 @@ public:
     // Press buttons on the controller. Note that buttons can be chorded.
     void PressButtons(SomfyButton buttons, uint16_t repeat);
 
+    bool NeedsPublish() { return _needsPublish; }
     void TriggerPublishDiscovery() {
+        _needsPublish = true;
         _discoveryWorker.ScheduleWork();
     }
 
@@ -64,7 +66,7 @@ public:
 private:
     void OnCommand(const uint8_t *payload, uint32_t length);
     void PublishDiscovery();
-    void PublishDiscovery(const char *cmd, const char *name, const char *baseTopic);
+    bool PublishDiscovery(const char *cmd, const char *name, const char *baseTopic);
 
     std::shared_ptr<RadioCommandQueue> _commandQueue;
     std::shared_ptr<Blinds> _blinds;
@@ -74,6 +76,7 @@ private:
     uint32_t _remoteId;
     uint16_t _rollingCode;
     bool _isDirty; // Does need save?
+    bool _needsPublish;
     std::vector<uint16_t> _associatedBlinds;
 
     MqttSubscription _cmdSubscription;

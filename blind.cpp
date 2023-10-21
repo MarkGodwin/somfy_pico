@@ -22,6 +22,7 @@ Blind::Blind(
     std::shared_ptr<DeviceConfig> config)
 :   _blindId(blindId),
     _isDirty(false),
+    _needsPublish(true),
     _name(std::move(name)),
     _targetPosition(currentPosition),
     _intermediatePosition(currentPosition),
@@ -44,8 +45,6 @@ Blind::Blind(
         _favouritePosition = 50;
 
     _lastTick = get_absolute_time();
-
-    TriggerPublishDiscovery();
 }
 
 Blind::~Blind()
@@ -249,11 +248,15 @@ void Blind::PublishPosition()
 
 void Blind::PublishDiscovery()
 {
+    if(!_mqttClient->IsConnected())
+        return;
+
     printf("Discovery publish for blind %d (%s)\n", _blindId, _name.c_str()); 
     auto mqttConfig = _config->GetMqttConfig();
     if(!*mqttConfig->topic)
     {
         puts("Discovery topic not configured");
+        _needsPublish = false;
         return;
     }
     printf("Discovery topic: %s\n", mqttConfig->topic); 
@@ -280,7 +283,8 @@ void Blind::PublishDiscovery()
     snprintf(topic, sizeof(topic), "%s/cover/pico_somfy/%08x/config", mqttConfig->topic, _blindId);
     topic[63] = 0;
     printf("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
-    _mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten());
+    if(_mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten()))
+        _needsPublish = false;
 
 }
 

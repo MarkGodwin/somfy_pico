@@ -56,7 +56,9 @@ class Blind
         void OnCommand(const uint8_t *payload, uint32_t length);
         void OnSetPosition(const uint8_t *payload, uint32_t length);
 
+        bool NeedsPublish() { return _needsPublish; }
         void TriggerPublishDiscovery() {
+            _needsPublish = true;
             _discoveryWorker.ScheduleWork();
         }
 
@@ -72,6 +74,7 @@ class Blind
 
         uint16_t _blindId;
         bool _isDirty;  // True if save is needed
+        bool _needsPublish;
         std::string _name;
         int _openTime;
         int _closeTime;

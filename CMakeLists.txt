@@ -34,12 +34,13 @@ add_executable(somfy_remote
   blind.cpp
   scheduler.cpp
   commandQueue.cpp
-  webInterface.cpp
+  webServer.cpp
   wifiConnection.cpp
   wifiScanner.cpp
   blockStorage.cpp
   configService.cpp
   deviceConfig.cpp
+  serviceStatus.cpp
   mqttClient.cpp
   dhcpserver/dhcpserver.c
   dnsserver/dnsserver.c

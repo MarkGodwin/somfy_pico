@@ -5,7 +5,7 @@
 #include <list>
 #include <memory>
 #include <map>
-#include "webInterface.h"
+#include "webServer.h"
 #include "scheduler.h"
 
 class DeviceConfig;
@@ -27,6 +27,9 @@ class SomfyRemotes
         std::shared_ptr<SomfyRemote> CreateRemote(std::string remoteName);
         void DeleteRemote(uint32_t remoteId);
 
+        /// @brief Publish discovery info for any devices that need to, now that Mqtt is connected
+        /// @return True if there is more work to be done
+        bool TryRepublish();
         void SaveRemoteState();
 
     private:

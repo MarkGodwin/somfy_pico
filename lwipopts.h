@@ -9,7 +9,7 @@
 // MEM_LIBC_MALLOC is incompatible with non polling versions
 #define MEM_LIBC_MALLOC             0
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    4000
+#define MEM_SIZE                    8192
 #define MEMP_NUM_TCP_SEG            32
 #define MEMP_NUM_ARP_QUEUE          10
 #define PBUF_POOL_SIZE              24
@@ -54,13 +54,13 @@
 #define PBUF_DEBUG                  LWIP_DBG_OFF
 #define API_LIB_DEBUG               LWIP_DBG_OFF
 #define API_MSG_DEBUG               LWIP_DBG_OFF
-#define SOCKETS_DEBUG               LWIP_DBG_OFF
+#define SOCKETS_DEBUG               LWIP_DBG_ON
 #define ICMP_DEBUG                  LWIP_DBG_OFF
 #define INET_DEBUG                  LWIP_DBG_OFF
 #define IP_DEBUG                    LWIP_DBG_OFF
 #define IP_REASS_DEBUG              LWIP_DBG_OFF
 #define RAW_DEBUG                   LWIP_DBG_OFF
-#define MEM_DEBUG                   LWIP_DBG_OFF
+#define MEM_DEBUG                   LWIP_DBG_ON
 #define MEMP_DEBUG                  LWIP_DBG_OFF
 #define SYS_DEBUG                   LWIP_DBG_OFF
 #define TCP_DEBUG                   LWIP_DBG_OFF
@@ -79,6 +79,7 @@
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
 // Allow <!--#xxx--> substitution
+#define HTTPD_DEBUG LWIP_DBG_ON
 #define LWIP_HTTPD_SSI                  1
 // Just give us all of the tags as raw strings
 #define LWIP_HTTPD_SSI_RAW              1
@@ -90,6 +91,7 @@
 #define LWIP_HTTPD_CGI_SSI              1
 #define LWIP_HTTPD_FILE_STATE           1
 
+#define MQTT_DEBUG LWIP_DBG_ON
 #define MQTT_OUTPUT_RINGBUF_SIZE        2048
 
 #define HTTPD_ADDITIONAL_CONTENT_TYPES { "svg", HTTP_HDR_SVG }

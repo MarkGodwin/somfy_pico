@@ -31,6 +31,7 @@ SomfyRemote::SomfyRemote(
       _rollingCode(rollingCode),
       _associatedBlinds(std::move(associatedBlinds)),
       _isDirty(false),
+      _needsPublish(true),
       _cmdSubscription(mqttClient, string_format("pico_somfy/remotes/%08x/cmd", remoteId), [this](const uint8_t *payload, uint32_t length)
                        { OnCommand(payload, length); }),
       _discoveryWorker([this]()
@@ -104,11 +105,16 @@ void SomfyRemote::OnCommand(const uint8_t *payload, uint32_t length)
 
 void SomfyRemote::PublishDiscovery()
 {
+    if(!_mqttClient->IsConnected())
+        // We'll be called again when MQTT connects
+        return;
+
     printf("Discovery publish for remote %d (%s)\n", _remoteId, _remoteName.c_str());
     auto mqttConfig = _config->GetMqttConfig();
     if (!*mqttConfig->topic)
     {
         puts("Discovery topic not configured\n");
+        _needsPublish = false;
         return;
     }
     // No discovery for the primary remote for any blind
@@ -119,20 +125,26 @@ void SomfyRemote::PublishDiscovery()
     }
     printf("Discovery topic: %s\n", mqttConfig->topic);
 
-    PublishDiscovery("up", "Up Button", mqttConfig->topic);
-    PublishDiscovery("down", "Down Button", mqttConfig->topic);
-    PublishDiscovery("stop", "Stop Button", mqttConfig->topic);
+    if( PublishDiscovery("up", "Up Button", mqttConfig->topic) &&
+        PublishDiscovery("down", "Down Button", mqttConfig->topic) &&
+        PublishDiscovery("stop", "Stop Button", mqttConfig->topic))
+    {
+        _needsPublish = false;
+    }
 }
 
-void SomfyRemote::PublishDiscovery(const char *cmd, const char *name, const char *baseTopic)
+bool SomfyRemote::PublishDiscovery(const char *cmd, const char *name, const char *baseTopic)
 {
+
     char payload[512];
     BufferOutput payloadWriter(payload, sizeof(payload));
 
     payloadWriter.Append("{ \"name\": \"");
     payloadWriter.Append(name);
     payloadWriter.Append(
-        "\", \"avty_t\": \"pico_somfy/status\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\", \"cmd_t\": \"~/cmd\", \"pl_press\": \"");
+        "\", \"avty_t\": \"pico_somfy/status\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\", \"cmd_t\": \"pico_somfy/remotes/");
+    payloadWriter.AppendHex(_remoteId);
+    payloadWriter.Append("/cmd\", \"pl_press\": \"");
     payloadWriter.Append(cmd);
     payloadWriter.Append("\", \"uniq_id\": \"psrem_");
     payloadWriter.AppendHex(_remoteId);
@@ -149,5 +161,5 @@ void SomfyRemote::PublishDiscovery(const char *cmd, const char *name, const char
     topic[67] = 0;
     printf("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
 
-    _mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten());
+    return _mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten());
 }

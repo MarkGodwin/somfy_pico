@@ -1,7 +1,7 @@
 #pragma once
 
 #include "deviceConfig.h"
-#include "webInterface.h"
+#include "webServer.h"
 #include <memory>
 #include <list>
 

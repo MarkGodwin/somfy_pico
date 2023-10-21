@@ -4,7 +4,7 @@
 #include "blind.h"
 #include <list>
 #include <memory>
-#include "webInterface.h"
+#include "webServer.h"
 #include "scheduler.h"
 
 class MqttClient;
@@ -33,6 +33,9 @@ class Blinds
 
         bool IsAPrimaryRemote(uint32_t remoteId);
 
+        /// @brief Publish discovery info for any devices that need to, now that Mqtt is connected
+        /// @return True if there is more work to be done
+        bool TryRepublish();
         void SaveBlindState(bool force = false);
 
     private:

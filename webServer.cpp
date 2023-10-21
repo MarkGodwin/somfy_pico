@@ -6,7 +6,7 @@
 #include <map>
 #include <string>
 
-#include "webInterface.h"
+#include "webServer.h"
 #include "deviceConfig.h"
 #include "serviceControl.h"
 
@@ -95,7 +95,7 @@ void WebServer::Start()
 
 char hexToInt(char x)
 {
-    if(x >= '0' && x <= '0')
+    if(x >= '0' && x <= '9')
         return x - '0';
     if(x >= 'a' && x <= 'f')
         return x + 10 - 'a';

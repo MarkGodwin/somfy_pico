@@ -39,11 +39,13 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
         if(remote)
         {
             auto blind = std::make_unique<Blind>(blindids[a], cfg->blindName, cfg->currentPosition, cfg->myPosition, cfg->openTime, cfg->closeTime, remote, _mqttClient, _config);
+            blind->TriggerPublishDiscovery();
             _blinds.insert(
                 {
                     blindids[a],
                     std::move(blind)
                 });
+            sleep_ms(250);
         }
         else
         {
@@ -64,6 +66,20 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
     _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }));
 
     _webData.push_back(SsiSubscription(_webServer, "blinds", [this](char *buffer, int len, uint16_t tagPart, uint16_t *nextPart) { return GetBlindsResponse(buffer, len, tagPart, nextPart); }));
+}
+
+bool Blinds::TryRepublish()
+{
+    for(auto iter = _blinds.begin(); iter != _blinds.end(); iter++)
+    {
+        if(iter->second->NeedsPublish())
+        {
+            iter->second->TriggerPublishDiscovery();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Blinds::SaveBlindState(bool force)
@@ -114,6 +130,7 @@ bool Blinds::DoAddBlind(const CgiParams &params)
 
     auto newBlind = std::make_unique<Blind>(newId, nameParam->second, 90, 50, openTime, closeTime, newRemote, _mqttClient, _config);
     newBlind->SaveConfig(true);
+    newBlind->TriggerPublishDiscovery();
 
     auto created = _blinds.insert({newId, std::move(newBlind)});
     newRemote->AssociateBlind(newId);

@@ -13,11 +13,12 @@
 #include "blinds.h"
 #include "wifiConnection.h"
 #include "wifiScanner.h"
-#include "webInterface.h"
+#include "webServer.h"
 #include "mqttClient.h"
 #include "blockStorage.h"
 #include "configService.h"
 #include "deviceConfig.h"
+#include "serviceStatus.h"
 #include "serviceControl.h"
 #include "commandQueue.h"
 
@@ -57,7 +58,6 @@ int main()
         return -1;
     }
 
-
     // Store flash settings at the very top of Flash memory
     // ALL STORED DATA WILL BE LOST IF THESE ARE CHANGED
     const uint32_t StorageSize = 8 * FLASH_SECTOR_SIZE;
@@ -89,7 +89,8 @@ int main()
 
     auto wifiConnection = std::make_shared<WifiConnection>(config, apMode);
 
-    // Do an initial WiFi scan before entering AP mode
+    // Do an initial WiFi scan before entering AP mode. We don't seem to be able
+    // to scan once in AP mode.
     auto wifiScanner = std::make_shared<WifiScanner>(apMode);
     wifiScanner->WaitForScan();
 
@@ -126,19 +127,56 @@ int main()
     puts("Starting worker thread...\n");
     commandQueue->Start();
 
+    ServiceStatus statusApi(webServer, mqttClient, apMode);
+
+    ScheduledTimer republishTimer([&blinds, &remotes] () {
+        // Try to republish discovery information for one device
+        // It should be safe to access the collections from this callback.
+        if(remotes->TryRepublish()||
+            blinds->TryRepublish())
+            // Do another later, if there is more work to be done
+            // We can't publish everything at once, as lwip needs a chance to run to clear the queues
+            return 100;
+
+        // Everything that needed to be published has been
+        return 0;
+    }, 0);
+
+    
+
+    auto mqttConnected = false;
+
     puts("Entering main loop...\n");
     while(!service->IsStopRequested()) {
 
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
         sleep_ms(1000);
 
+        // Lazy man's notification of MQTT reconnection outside of an IRQ callback
+        if(!mqttConnected)
+        {
+            if(mqttClient->IsConnected())
+            {
+                mqttConnected = true;
+                republishTimer.ResetTimer(250);
+            }
+        }
+        else if(mqttConnected)
+        {
+            republishTimer.ResetTimer(0);
+            mqttConnected = false;
+        }
+
         // Show Mark we aren't dead
         gpio_put(PIN_LED, onOff);
         onOff = !onOff;
     }
 
+    republishTimer.ResetTimer(0);
+
     puts("Waiting for the command queue to clear...\n");
     commandQueue->Shutdown();
+
 
     puts("Saving any unsaved state.\n");
     remotes->SaveRemoteState();
@@ -157,51 +195,4 @@ int main()
     }
     sleep_ms(5000);
     puts("ERM!!! Why no reboot?\n");
-
-    // dns_server_deinit(&dns_server);
-    // dhcp_server_deinit(&dhcp_server);
-    // cyw43_arch_deinit();
-    // return 0;
-
-/*    RFM69Radio radio(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
-
-
-    sleep_ms(6000);
-    puts("Starting...\n");
-
-
-    SomfyRemote remote(&radio, 0x27962a, 2612);
-
-
-    uint16_t loopCounter = 0;
-    while (true) {
-        loopCounter++;
-        //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-        gpio_put(PIN_LED, 0);
-        sleep_ms(250);
-        //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-        sleep_ms(250);
-        //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-        gpio_put(PIN_LED, 1);
-        sleep_ms(250);
-        //cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-        sleep_ms(250);
-
-        if((loopCounter & 0x1F) == 0x0F)
-        {
-            remote.PressButtons(SomfyButton::Up, 4);
-            puts("Going Up...!\n");
-        }
-        if((loopCounter & 0x1F) == 0x1F)
-        {
-            remote.PressButtons(SomfyButton::Down, 4);
-            puts("Going Down...!\n");
-
-            return 0;
-        }
-
-    }
-    puts("Hello, world!");
-
-    return 0;*/
 }

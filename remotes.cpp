@@ -75,6 +75,21 @@ void SomfyRemotes::DeleteRemote(uint32_t remoteId)
     SaveRemoteList();
 }
 
+bool SomfyRemotes::TryRepublish()
+{
+    for(auto iter = _remotes.begin(); iter != _remotes.end(); iter++)
+    {
+        if(iter->second->NeedsPublish())
+        {
+            iter->second->TriggerPublishDiscovery();
+            return true;
+        }
+    }
+
+    // No remotes needed publishing
+    return false;
+}
+
 void SomfyRemotes::SaveRemoteState()
 {
     for(auto iter = _remotes.begin(); iter != _remotes.end(); iter++)
