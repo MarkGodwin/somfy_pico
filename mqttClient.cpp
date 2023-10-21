@@ -86,33 +86,44 @@ bool MqttClient::IsConnected()
     return mqtt_client_is_connected(_client);
 }
 
-
-void MqttClient::Subscribe(const char *topic, SubscribeFunc &&callback)
+void MqttClient::SubscribeTopic(const char *topic)
 {
-    _subscriptions.insert({topic, callback});
-
-    if(IsConnected())
+    if(_subscribedTopics.insert(topic).second && IsConnected())
     {
         mqtt_subscribe(_client, topic, 0, SubscriptionRequestCallbackEntry, this);
     }
 }
 
-
-void MqttClient::Unsubscribe(const char *topic)
+void MqttClient::UnsubscribeTopic(const char *topic)
 {
     printf("Unsubscribing from MQTT: %s", topic);
-    _subscriptions.erase(topic);
-    if(IsConnected())
+    if(_subscribedTopics.erase(topic) && IsConnected())
     {
         mqtt_unsubscribe(_client, topic, SubscriptionRequestCallbackEntry, this);
     }
 }
 
-bool MqttClient::Publish(const char *topic, const uint8_t *payload, uint32_t length)
+void MqttClient::AddTopicCallback(const char *topic, SubscribeFunc &&callback)
+{
+    _topicCallbacks.insert({topic, callback});
+}
+
+
+void MqttClient::RemoveTopicCallback(const char *topic)
+{
+    _topicCallbacks.erase(topic);
+}
+
+bool MqttClient::Publish(const char *topic, const uint8_t *payload, uint32_t length, bool retain)
 {
     if(!IsConnected())
+    {
+        puts("Can't publish - not connected to broker\n");
         return false;
-    auto result = mqtt_publish(_client, topic, payload, length, 0, true, PublishCallbackEntry, this);
+    }
+    auto result = mqtt_publish(_client, topic, payload, length, 0, retain, PublishCallbackEntry, this);
+    if(result)
+        printf("Publish failed (%d)\n", result);
     return result == ERR_OK;
 }
 
@@ -125,6 +136,8 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
             puts("Mqtt client is connected");
             Publish(_statusTopic, (const uint8_t *)_onlinePayload, strlen(_onlinePayload));
             DoSubscribe();
+
+            // TODO: Tell observers that we are connected, so they can do any publishing they were waiting for
             break;
         
         default:
@@ -139,11 +152,11 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
 
 void MqttClient::DoSubscribe()
 {
-    for(auto const &sub : _subscriptions)
+    for(auto const &sub : _subscribedTopics)
     {
         mqtt_set_inpub_callback(_client, IncomingPublishCallbackEntry, IncomingPayloadCallbackEntry, this);
 
-        auto topic = sub.first.c_str();
+        auto topic = sub.c_str();
         mqtt_request_cb_t cb;
         
         mqtt_subscribe(_client, topic, 0, SubscriptionRequestCallbackEntry, this);
@@ -157,13 +170,14 @@ void MqttClient::SubscriptionResultCallback(err_t result)
 
 void MqttClient::PublishCallback(err_t result)
 {
-    printf("Publish result: %d\n", result);
+    if(result)
+        printf("Publish Error: %d\n", result);
 }
 
 void MqttClient::IncomingPublishCallback(const char *topic, u32_t tot_len)
 {
-    auto sub = _subscriptions.find(topic);
-    if(sub == _subscriptions.end())
+    auto sub = _topicCallbacks.find(topic);
+    if(sub == _topicCallbacks.end())
     {
         printf("Recieved a message for %s with no subscription\n", topic);
         if(_payload)
@@ -215,7 +229,7 @@ void MqttClient::IncomingPayloadCallback(const u8_t *data, u16_t len, u8_t flags
     if(flags & MQTT_DATA_FLAG_LAST)
     {
         // Call the subscriber...
-        _subscriptions[_currentTopic](_payload, _payloadLength);
+        _topicCallbacks[_currentTopic](_payload, _payloadLength);
         delete [] _payload;
         _payload = nullptr;
     }

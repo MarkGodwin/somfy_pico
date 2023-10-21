@@ -1,14 +1,15 @@
 
 
-import {useContext, useState} from 'react';
-import {Accordion, ListGroup, ProgressBar, Button, Form, Modal, AccordionContext} from 'react-bootstrap';
+import {useState} from 'react';
+import {Accordion, ListGroup, ProgressBar, Button, Modal, ButtonGroup} from 'react-bootstrap';
 
 import {BlindConfig, RemoteConfig} from './BlindTypes';
-import {Remote, RemoteButtons} from './Remote';
+import {RemoteButtons} from './Remote';
 import {useToaster} from './toaster';
 
 import './Blind.css';
 import { BlindForm, BlindValues } from './BlindForm';
+import { SomfyButton, pressButtons } from './remoteApi';
 
 let dragTimeout : number | undefined;
 export function Blind(props: {config: BlindConfig, remote: RemoteConfig, onSaved: () => void }) {
@@ -17,14 +18,22 @@ export function Blind(props: {config: BlindConfig, remote: RemoteConfig, onSaved
     const [edit, setEdit] = useState(false);
     const [newValues, setNewValues] = useState<BlindValues>({...props.config});
     const toaster = useToaster();
-    const { activeEventKey } = useContext(AccordionContext);
 
     async function moveBlindToPosition(pos: number) {
         setPosition(pos);
         if(dragTimeout)
             window.clearTimeout(dragTimeout);
-        dragTimeout = window.setTimeout(() => {
-            toaster.open("Set pos...", `Setting pos to ${pos}.`);
+        dragTimeout = window.setTimeout(async () => {
+            const params = new URLSearchParams();
+            params.set("id", props.config.id.toString());
+            params.set("command", "pos");
+            params.set("payload", pos.toString());
+            let response = await fetch("/api/blinds/command.json?" + params.toString());
+            let body: boolean =  await response.json();
+            if(!body)
+                toaster.open("Command Rejected", "Something went wrong with the command");
+            else
+                props.onSaved();
         }, 750);
     }
 
@@ -39,8 +48,7 @@ export function Blind(props: {config: BlindConfig, remote: RemoteConfig, onSaved
         if(!body)
             toaster.open("Command Rejected", "Something went wrong with the command");
         else
-            toaster.open("Command Accepted", "Looks good.");
-
+            props.onSaved();
     }
 
     async function doOpen(e: React.MouseEvent<HTMLButtonElement>) {
@@ -71,12 +79,38 @@ export function Blind(props: {config: BlindConfig, remote: RemoteConfig, onSaved
 
         let body: boolean =  await response.json();
         if(!body)
-        {
-            toaster.open("Command Rejected", "Something went wrong with the command");
-        }
+            toaster.open("Save Failed", "For some reason, the controller didn't save the changes.");
+        else
+            props.onSaved();
 
         setEdit(false);
     };
+
+    const handleDelete = async () => {
+
+        if(!window.confirm("Deleting the blind will delete the associated remote control, and cannot be undone.\nAre you absolutely sure?"))
+            return;
+
+        // Try to de-register the remote with the blind.
+        let dereg = await pressButtons(props.config.remoteId, SomfyButton.Prog, true);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        dereg = dereg && await pressButtons(props.config.remoteId, SomfyButton.Prog, false);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        if(!dereg)
+            toaster.open("Remote not deregistered", "We tried to de-register the remote with the blind, but the commands weren't accepted. Deleting the blind anyway...")
+
+        const params = new URLSearchParams();
+        params.set("id", props.config.id.toString());
+        let response = await fetch("/api/blinds/delete.json?" + params.toString());
+
+        let body: boolean =  await response.json();
+        if(!body)
+            toaster.open("Delete Failed", "For some reason, the controller didn't delete the blind.");
+        else
+            props.onSaved();
+
+    }
     
     return (
         <Accordion.Item eventKey={props.config.id.toString()}>
@@ -103,10 +137,11 @@ export function Blind(props: {config: BlindConfig, remote: RemoteConfig, onSaved
                     <div className="col-md-auto">
                         <RemoteButtons config={props.remote} />
                     </div>
-                </div>
-                <div className="row mt-3">
-                    <div className="col">
-                        <Button variant="outline-secondary" size="sm" onClick={handleEdit}>Edit ✏️</Button>
+                    <div className="col-md-auto">
+                        <ButtonGroup vertical>
+                            <Button variant="outline-secondary" size="sm" onClick={handleEdit}>Edit ✏️</Button>
+                            <Button variant="outline-secondary" size="sm" onClick={handleDelete}>Delete 🗑️</Button>
+                        </ButtonGroup>
                     </div>
                 </div>
                 <Modal show={edit}  onHide={handleEditCancel}>

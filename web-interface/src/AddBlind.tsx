@@ -8,6 +8,7 @@ export function AddBlind(props: { onSaved: () => void } ) : JSX.Element {
 
     const [values, setValues] = useState<BlindValues>({ name: "", openTime: 20, closeTime: 30});
     const toaster = useToaster();
+    const [addIndex, setAddIndex] = useState(1);
 
     const doAdd = async () => {
         if(values.name.length < 1 || values.name.length > 47)
@@ -29,15 +30,17 @@ export function AddBlind(props: { onSaved: () => void } ) : JSX.Element {
         }
         else
         {
+            props.onSaved();
             setValues({...values, name: ""});
+            setAddIndex(addIndex+1);
         }
 
     };
 return (
     <Accordion.Item eventKey="-1">
-        <Accordion.Header><strong>Add new Blind</strong></Accordion.Header>
+        <Accordion.Header><strong>New Blind</strong></Accordion.Header>
         <Accordion.Body>
-            <BlindForm config={values} onChange={setValues} />
+            <BlindForm key={addIndex} config={values} onChange={setValues} />
             <Button className="mt-3" onClick={doAdd}>Add</Button>
         </Accordion.Body>
     </Accordion.Item>

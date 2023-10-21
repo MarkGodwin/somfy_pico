@@ -3,6 +3,7 @@
 #include "remotes.h"
 #include "deviceConfig.h"
 #include "blinds.h"
+#include "bufferOutput.h"
 
 const uint32_t BaseRemoteId = 0x270000;
 
@@ -10,10 +11,13 @@ SomfyRemotes::SomfyRemotes(
     std::shared_ptr<DeviceConfig> config,
     std::shared_ptr<Blinds> blinds,
     std::shared_ptr<WebServer> webServer,
-    std::shared_ptr<RadioCommandQueue> commandQueue)
+    std::shared_ptr<RadioCommandQueue> commandQueue,
+    std::shared_ptr<MqttClient> mqttClient)
 :   _config(std::move(config)),
     _blinds(std::move(blinds)),
-    _commandQueue(std::move(commandQueue))
+    _commandQueue(std::move(commandQueue)),
+    _mqttClient(mqttClient),
+    _saveTimer([this]() { SaveRemoteState(); return SAVE_DELAY; }, SAVE_DELAY)    // Potentially save every two minutes, to avoid writing rolling code changes too often when lots of presses happen
 {
 
     uint32_t count;
@@ -26,17 +30,18 @@ SomfyRemotes::SomfyRemotes(
     {
         auto id = remoteIds[a] | BaseRemoteId;
         if(id >= _nextId)
-            _nextId = id;
+            _nextId = id + 1;
         auto cfg = _config->GetRemoteConfig(id);
         std::vector<uint16_t> assocBlinds(cfg->blinds, cfg->blinds + cfg->blindCount);
-        _remotes.insert({cfg->remoteId, std::make_shared<SomfyRemote>(_commandQueue, _blinds, cfg->remoteName, cfg->remoteId, cfg->rollingCode, assocBlinds)});
+        auto remote = std::make_shared<SomfyRemote>(_commandQueue, _blinds, _config, _mqttClient, cfg->remoteName, id, cfg->rollingCode, assocBlinds);
+        _remotes.insert({id, remote});
     }
 
     _webApi.push_back(CgiSubscription(webServer, "/api/remotes/add.json", [this](const CgiParams &params) { return DoAddRemote(params); }));
     _webApi.push_back(CgiSubscription(webServer, "/api/remotes/update.json", [this](const CgiParams &params) { return DoUpdateRemote(GetRemoteParam(params), params); }));
     _webApi.push_back(CgiSubscription(webServer, "/api/remotes/delete.json", [this](const CgiParams &params) { return DoDeleteRemote(GetRemoteParam(params), params); }));
-    _webApi.push_back(CgiSubscription(webServer, "/api/remotes/addBlind.json", [this](const CgiParams &params) { return DoAddOrRemoveBlindToRemote(GetRemoteParam(params), params, &SomfyRemote::AssociateBlind); }));
-    _webApi.push_back(CgiSubscription(webServer, "/api/remotes/removeBlind.json", [this](const CgiParams &params) { return DoAddOrRemoveBlindToRemote(GetRemoteParam(params), params, &SomfyRemote::DisassociateBlind); }));
+    _webApi.push_back(CgiSubscription(webServer, "/api/remotes/bindBlind.json", [this](const CgiParams &params) { return DoAddOrRemoveBlindToRemote(GetRemoteParam(params), params, &SomfyRemote::AssociateBlind); }));
+    _webApi.push_back(CgiSubscription(webServer, "/api/remotes/unbindBlind.json", [this](const CgiParams &params) { return DoAddOrRemoveBlindToRemote(GetRemoteParam(params), params, &SomfyRemote::DisassociateBlind); }));
     _webApi.push_back(CgiSubscription(webServer, "/api/remotes/command.json", [this](const CgiParams &params) { return DoButtonPress(GetRemoteParam(params), params); }));
 
     _webData.push_back(SsiSubscription(webServer, "remotes", [this](char *buffer, int len, uint16_t tagPart, uint16_t *nextPart) { return GetRemotesResponse(buffer, len, tagPart, nextPart); }));
@@ -53,11 +58,40 @@ std::shared_ptr<SomfyRemote> SomfyRemotes::GetRemote(uint32_t remoteId)
 
 std::shared_ptr<SomfyRemote> SomfyRemotes::CreateRemote(std::string remoteName)
 {
+    printf("Creating new remote with id %08x\n", _nextId);
     auto id = _nextId++;
-    auto newRemote = std::make_shared<SomfyRemote>(_commandQueue, _blinds, remoteName, id, 1, std::vector<uint16_t>());
+    auto newRemote = std::make_shared<SomfyRemote>(_commandQueue, _blinds, _config, _mqttClient, remoteName, id, 1, std::vector<uint16_t>());
     _remotes.insert({id, newRemote});
+    newRemote->SaveConfig(true);
 
+    SaveRemoteList();
     return newRemote;
+}
+
+void SomfyRemotes::DeleteRemote(uint32_t remoteId)
+{
+    _remotes.erase(remoteId);
+    _config->DeleteRemoteConfig(remoteId);
+    SaveRemoteList();
+}
+
+void SomfyRemotes::SaveRemoteState()
+{
+    for(auto iter = _remotes.begin(); iter != _remotes.end(); iter++)
+    {
+        iter->second->SaveConfig();
+    }
+}
+
+void SomfyRemotes::SaveRemoteList()
+{
+    uint16_t ids[128];
+    uint16_t *idoff = ids;
+    for(auto iter = _remotes.begin(); iter != _remotes.end(); iter++)
+    {
+        *idoff++ = iter->first & 0xFFFF;
+    }
+    _config->SaveRemoteIds(ids, _remotes.size());
 }
 
 std::shared_ptr<SomfyRemote> SomfyRemotes::GetRemoteParam(const CgiParams &params)
@@ -92,9 +126,7 @@ bool SomfyRemotes::DoAddRemote(const CgiParams &params)
         return false;
     }
 
-    auto id = _nextId++;
-    _remotes.insert({id, std::make_shared<SomfyRemote>(_commandQueue, _blinds, nameparam->second, id, 1, std::vector<uint16_t>())});
-
+    CreateRemote(nameparam->second)->TriggerPublishDiscovery();
     return true;
 }
 
@@ -119,8 +151,13 @@ bool SomfyRemotes::DoUpdateRemote(std::shared_ptr<SomfyRemote> remote, const Cgi
 
 bool SomfyRemotes::DoDeleteRemote(std::shared_ptr<SomfyRemote> remote, const CgiParams &params)
 {
-    // TODO!
-    return false;
+    // Can't remove the primary remote for any blind - we should remove the blind instead
+    auto remoteId = remote->GetRemoteId();
+    if(_blinds->IsAPrimaryRemote(remoteId))
+        return false;
+
+    DeleteRemote(remoteId);
+    return true;
 }
 
 

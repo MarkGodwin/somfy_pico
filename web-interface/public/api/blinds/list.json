@@ -5,7 +5,8 @@
         "position": 100,
         "openTime": 30,
         "closeTime": 30,
-        "remoteId": 5000
+        "remoteId": 5000,
+        "state": "stopped"
     },
     {
         "id": 2,
@@ -13,7 +14,8 @@
         "position": 50,
         "openTime": 30,
         "closeTime": 30,
-        "remoteId": 5001
+        "remoteId": 5001,
+        "state": "stopped"
     },
     {
         "id": 3,
@@ -21,6 +23,7 @@
         "position": 0,
         "openTime": 30,
         "closeTime": 30,
-        "remoteId": 5002
+        "remoteId": 5002,
+        "state": "stopped"
     }
 ]

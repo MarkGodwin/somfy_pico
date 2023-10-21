@@ -72,7 +72,12 @@ void DeviceConfig::SaveBlindConfig(uint16_t blindId, const BlindConfig *blindCon
     {
         return;
     }
-    _storage.SaveBlock(blindConfigMagic | blindId, (const uint8_t *)blindConfig, sizeof(blindConfig));
+    _storage.SaveBlock(blindConfigMagic | blindId, (const uint8_t *)blindConfig, sizeof(*blindConfig));
+}
+
+void DeviceConfig::DeleteBlindConfig(uint16_t blindId)
+{
+    _storage.ClearBlock(blindConfigMagic | blindId);
 }
 
 const RemoteConfig *DeviceConfig::GetRemoteConfig(uint32_t remoteId)
@@ -89,14 +94,18 @@ void DeviceConfig::SaveRemoteConfig(uint32_t remoteId, const RemoteConfig *remot
     {
         return;
     }
-    _storage.SaveBlock(remoteConfigMagic | (remoteId & 0xFFFF), (const uint8_t *)remoteConfig, sizeof(remoteConfig));
+    _storage.SaveBlock(remoteConfigMagic | (remoteId & 0xFFFF), (const uint8_t *)remoteConfig, sizeof(*remoteConfig));
+}
+
+void DeviceConfig::DeleteRemoteConfig(uint32_t remoteId)
+{
+    _storage.ClearBlock(remoteConfigMagic | (remoteId & 0xFFFF));
 }
 
 const uint16_t *DeviceConfig::GetRemoteIds(uint32_t *count)
 {
     return GetIdList(remotesConfigMagic, count);
 }
-
 
 void DeviceConfig::HardReset()
 {

@@ -10,6 +10,7 @@ class ScheduledTimer
     public:
 
         ScheduledTimer(std::function<uint32_t()> &&callback, uint32_t timeout);
+        void ResetTimer(uint32_t timeout);
 
         ~ScheduledTimer();
     

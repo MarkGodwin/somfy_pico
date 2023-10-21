@@ -2,7 +2,6 @@ import { useState, useMemo, ReactNode, PropsWithChildren, MouseEventHandler } fr
 
 import { ToasterContext } from './toaster';
 import './toasterOutlet.css';
-import { title } from 'process';
 import Toast from 'react-bootstrap/Toast';
 
 let toastIndex = 0;

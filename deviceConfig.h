@@ -2,6 +2,9 @@
 
 #include "blockStorage.h"
 
+#define SAVE_DELAY 120000
+
+
 struct WifiConfig
 {
     char ssid[36];
@@ -64,9 +67,11 @@ class DeviceConfig
 
         const BlindConfig *GetBlindConfig(uint16_t blindId);
         void SaveBlindConfig(uint16_t blindId, const BlindConfig *blindConfig);
+        void DeleteBlindConfig(uint16_t blindId);
 
         const RemoteConfig *GetRemoteConfig(uint32_t remoteId);
         void SaveRemoteConfig(uint32_t remoteId, const RemoteConfig *remoteConfig);
+        void DeleteRemoteConfig(uint32_t remoteId);
 
         void HardReset();
 

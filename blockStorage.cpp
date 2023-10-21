@@ -116,6 +116,20 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
 
 }
 
+void BlockStorage::ClearBlock(uint32_t blockId)
+{
+    auto existing = FindBlock(blockId);
+    if(existing != -1)
+    {
+        printf("Deleting existing record at 0x%08x\n", existing);
+        DeletePage(existing);
+    }
+    else
+    {
+        printf("Record ID %08x not found to delete\n", blockId);
+    }
+}
+
 void BlockStorage::Format()
 {
     printf("Formatting entire block storage: 0x%08x - 0x%08x\n", _base, _sectors * FLASH_SECTOR_SIZE);

@@ -1,86 +1,86 @@
 
-import { MouseEvent, useEffect, useState } from 'react';
-import { Form } from "react-router-dom";
-import { Accordion, Button, Container, Row, Stack } from "react-bootstrap";
+import { useEffect, useState } from 'react';
+import { Accordion, Container, Row } from "react-bootstrap";
 
 import { useToaster } from './toaster';
 import { Spinner } from "./Spinner";
 import { BlindConfig, RemoteConfig } from "./BlindTypes";
-import {Blind} from "./Blind";
-import {Remote} from "./Remote";
+import { Blind } from "./Blind";
+import { Remote } from "./Remote";
 import { AddBlind } from './AddBlind';
+import { AddRemoteButton } from './AddRemoteButton';
 
-export function ControlPage() : JSX.Element {
+export function ControlPage(): JSX.Element {
 
-  const [loading, setLoading] = useState(true);
-  const [reload, setReload] = useState(true);
-  const [blinds, setBlinds] = useState<BlindConfig[]>([]);
-  const [remotes, setRemotes] = useState<RemoteConfig[]>([]);
-  const [wifiPassword, setWifiPassword] = useState("********");
+    const [loading, setLoading] = useState(true);
+    const [reload, setReload] = useState(0);
+    const [blinds, setBlinds] = useState<BlindConfig[]>([]);
+    const [remotes, setRemotes] = useState<RemoteConfig[]>([]);
 
-  const toaster = useToaster();
- 
-  useEffect(() => {
-    setLoading(true);
-    let cancelled = false;
-    let timeout: number | undefined = undefined;
+    const toaster = useToaster();
 
-    async function getRemotes() {
-      const response : RemoteConfig[] = await (await fetch("/api/remotes/list.json")).json();
-      const blindResponse : BlindConfig[] = await (await fetch("/api/blinds/list.json")).json();
+    useEffect(() => {
+        let cancelled = false;
+        let timeout: any;
 
-      if(!cancelled)
-      {
-        setRemotes(response);
-        setBlinds(blindResponse);
-        setLoading(false);
-      }
-    };
+        async function getRemotes() {
 
-    getRemotes();
+            try {
+                const response: RemoteConfig[] = await (await fetch("/api/remotes/list.json")).json();
+                const blindResponse: BlindConfig[] = await (await fetch("/api/blinds/list.json")).json();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
+                if (!cancelled) {
+                    setRemotes(response);
+                    setBlinds(blindResponse);
+
+                    if (blindResponse.findIndex(b => b.state !== "stopped") !== -1) {
+                        timeout = setTimeout(() => setReload(reload+1), 1000);
+                    }
+                }
+            }
+            catch(e: any) {
+                toaster.open("Failed to read", (<><p>"The blind & remote list could not be read. Check the device is running."</p><p>{e.toString()}</p></>));
+            }
+            finally{
+                setLoading(false);
+            }
+        };
+
+        getRemotes();
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [reload, toaster]);
 
 
-  // Blinds and their associated remotes
-  const blindList = blinds.map(i => <Blind key={i.id} config={i} remote={remotes.find(r => r.id === i.remoteId)!} onSaved={() => setReload(true)} />);
+    // Blinds and their associated remotes
+    const blindList = blinds.map(i => <Accordion.Item eventKey={i.id.toString()}><Blind config={i} remote={remotes.find(r => r.id === i.remoteId)!} onSaved={() => setReload(reload+1)} /></Accordion.Item>);
 
-  // Other remotes
-  const remoteList = remotes.filter(r => !blinds.find(b => b.remoteId === r.id)).map(r => <Remote key={r.id} config={r} onChanged={()=> setReload(true)} />);
+    // Other remotes
+    const remoteList = remotes.filter(r => !blinds.find(b => b.remoteId === r.id)).map(r => <Remote key={r.id} config={r} blinds={blinds} onChanged={() => setReload(reload+1)} />);
 
-  function addBlind(e: MouseEvent<HTMLButtonElement>) {
-    toaster.open("TODO", "Add a blind. Somehow.");
-  }
-
-  function addRemote(e: MouseEvent<HTMLButtonElement>) {
-    toaster.open("TODO", "Add a remote. Somehow.");
-  }
-
-  return (
-    <div id="Control">
-      <h1 className="mt-4">
-        Blinds
-      </h1>
-      <Spinner loading={loading}></Spinner>
-      <Accordion>
-        {blindList}
-        <AddBlind onSaved={() => setReload(true)} />
-      </Accordion>
-      <h1 className="mt-4">
-        Custom Remotes
-      </h1>
-      <Spinner loading={loading}></Spinner>
-      <Container>
-        <Row xs="auto" className="align-bottom">
-        {remoteList}
-        {remoteList}
-        {remoteList}
-        </Row>
-        </Container>
-      <Button className="mt-4" onClick={addRemote}>Add a Remote</Button>
-    </div>
-  );
+    return (
+        <div id="Control">
+            <h1 className="mt-4">
+                Blinds
+            </h1>
+            <Spinner loading={loading}></Spinner>
+            <Accordion>
+                {blindList}
+                <AddBlind onSaved={() => { setReload(reload+1); }} />
+            </Accordion>
+            <h1 className="mt-4">
+                Custom Remotes
+            </h1>
+            <Spinner loading={loading}></Spinner>
+            <Container>
+                <Row xs="auto" className="align-bottom">
+                    {remoteList}
+                </Row>
+            </Container>
+            <AddRemoteButton onSaved={() => setReload(reload+1)} />
+        </div>
+    );
 }

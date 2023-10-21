@@ -90,6 +90,8 @@
 #define LWIP_HTTPD_CGI_SSI              1
 #define LWIP_HTTPD_FILE_STATE           1
 
+#define MQTT_OUTPUT_RINGBUF_SIZE        2048
+
 #define HTTPD_ADDITIONAL_CONTENT_TYPES { "svg", HTTP_HDR_SVG }
  
 #define HTTPD_FSDATA_FILE "../../../../fsdata.c"

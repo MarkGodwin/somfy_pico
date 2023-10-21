@@ -6,6 +6,7 @@ export interface BlindConfig {
     openTime: number;
     closeTime: number;
     remoteId: number;
+    state: string;
   };
   
 export interface RemoteConfig {

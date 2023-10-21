@@ -6,21 +6,32 @@
 #include <memory>
 #include <map>
 #include "webInterface.h"
+#include "scheduler.h"
 
 class DeviceConfig;
 class RadioCommandQueue;
 class Blinds;
-
+class MqttClient;
 
 class SomfyRemotes
 {
     public:
-        SomfyRemotes(std::shared_ptr<DeviceConfig> config, std::shared_ptr<Blinds> blinds, std::shared_ptr<WebServer> webServer, std::shared_ptr<RadioCommandQueue> commandQueue);
+        SomfyRemotes(
+            std::shared_ptr<DeviceConfig> config,
+            std::shared_ptr<Blinds> blinds,
+            std::shared_ptr<WebServer> webServer,
+            std::shared_ptr<RadioCommandQueue> commandQueue,
+            std::shared_ptr<MqttClient> mqttClient);
 
         std::shared_ptr<SomfyRemote> GetRemote(uint32_t remoteId);
         std::shared_ptr<SomfyRemote> CreateRemote(std::string remoteName);
+        void DeleteRemote(uint32_t remoteId);
+
+        void SaveRemoteState();
 
     private:
+
+        void SaveRemoteList();
 
         std::shared_ptr<SomfyRemote> GetRemoteParam(const CgiParams &params);
 
@@ -35,10 +46,12 @@ class SomfyRemotes
         std::shared_ptr<DeviceConfig> _config;
         std::shared_ptr<Blinds> _blinds;
         std::shared_ptr<RadioCommandQueue> _commandQueue;
+        std::shared_ptr<MqttClient> _mqttClient;
         std::map<uint32_t, std::shared_ptr<SomfyRemote>> _remotes;
 
         uint32_t _nextId;
 
         std::list<CgiSubscription> _webApi;
         std::list<SsiSubscription> _webData;
+        ScheduledTimer _saveTimer;
 };

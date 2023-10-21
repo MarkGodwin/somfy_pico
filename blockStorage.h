@@ -22,6 +22,10 @@ public:
     /// @param size Size of the data to store in the block (must be <= blockSize)
     void SaveBlock(uint32_t blockId, const uint8_t *data, size_t size);
 
+    /// @brief Clears a block in flash
+    /// @param blockId Id of the block to clear
+    void ClearBlock(uint32_t blockId);
+
     /// @brief Formats (clears) the entire block storage. DANGER!
     void Format();
 

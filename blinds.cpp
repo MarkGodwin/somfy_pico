@@ -6,7 +6,7 @@
 #include "blinds.h"
 #include "deviceConfig.h"
 #include "remotes.h"
-
+#include "bufferOutput.h"
 
 Blinds::Blinds(
     std::shared_ptr<DeviceConfig> config,
@@ -15,7 +15,8 @@ Blinds::Blinds(
 :   _config(std::move(config)),
     _mqttClient(std::move(mqttClient)),
     _webServer(webServer),
-    _nextId(1)
+    _nextId(1),
+    _saveTimer([this]() { SaveBlindState(false); return SAVE_DELAY; }, SAVE_DELAY)
 {
 }
 
@@ -28,12 +29,33 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
 
     printf("There are %d blinds registered\n", count);
 
+    auto errors = false;
     for(auto a = 0; a < count; a++)
     {
         if(blindids[a] >= _nextId)
             _nextId = blindids[a] + 1;
         auto cfg = _config->GetBlindConfig(blindids[a]);
-        _blinds.insert({blindids[a], std::make_unique<Blind>(blindids[a], cfg->blindName, cfg->currentPosition, cfg->myPosition, cfg->openTime, cfg->closeTime, _remotes->GetRemote(cfg->remoteId), _mqttClient)});
+        auto remote = _remotes->GetRemote(cfg->remoteId);
+        if(remote)
+        {
+            auto blind = std::make_unique<Blind>(blindids[a], cfg->blindName, cfg->currentPosition, cfg->myPosition, cfg->openTime, cfg->closeTime, remote, _mqttClient, _config);
+            _blinds.insert(
+                {
+                    blindids[a],
+                    std::move(blind)
+                });
+        }
+        else
+        {
+            printf("Deleting blind id %d with missing remote %08x\n", blindids[a], cfg->remoteId );
+            _config->DeleteBlindConfig(blindids[a]);
+            errors = true;
+        }
+    }
+
+    if(errors)
+    {
+        SaveBlindList();
     }
 
     _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }));
@@ -44,6 +66,25 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
     _webData.push_back(SsiSubscription(_webServer, "blinds", [this](char *buffer, int len, uint16_t tagPart, uint16_t *nextPart) { return GetBlindsResponse(buffer, len, tagPart, nextPart); }));
 }
 
+void Blinds::SaveBlindState(bool force)
+{
+    for(auto iter = _blinds.begin(); iter != _blinds.end(); iter++)
+    {
+        iter->second->SaveConfig(force);
+    }
+}
+
+void Blinds::SaveBlindList()
+{
+    printf("Saving blind list with %d blind ids.\n", _blinds.size());
+    uint16_t ids[128];
+    uint16_t *idoff = ids;
+    for(auto iter = _blinds.begin(); iter != _blinds.end(); iter++)
+    {
+        *idoff++ = iter->first & 0xFFFF;
+    }
+    _config->SaveBlindIds(ids, _blinds.size());
+}
 
 bool Blinds::DoAddBlind(const CgiParams &params)
 {
@@ -71,8 +112,13 @@ bool Blinds::DoAddBlind(const CgiParams &params)
     auto newRemote = _remotes->CreateRemote(nameParam->second);
     auto newId = _nextId++;
 
-    _blinds.insert({newId, std::make_unique<Blind>(newId, nameParam->second, 90, 50, openTime, closeTime, newRemote, _mqttClient)});
+    auto newBlind = std::make_unique<Blind>(newId, nameParam->second, 90, 50, openTime, closeTime, newRemote, _mqttClient, _config);
+    newBlind->SaveConfig(true);
+
+    auto created = _blinds.insert({newId, std::move(newBlind)});
     newRemote->AssociateBlind(newId);
+
+    SaveBlindList();
 
     return true;
 }
@@ -119,7 +165,26 @@ bool Blinds::DoUpdateBlind(const CgiParams &params)
 
 bool Blinds::DoDeleteBlind(const CgiParams &params)
 {
-    // TODO!
+    auto idParam = params.find("id");
+    uint32_t id;
+    if(!sscanf(idParam->second.c_str(), "%d", &id))
+    {
+        printf("Can't read ID %s\n", idParam->second.c_str());
+        return false;
+    }
+    
+    // Unregister the remote from the blind
+    auto removed = _blinds.extract(id);
+    if(removed.empty())
+    {
+        return false;
+    }
+
+    auto remoteId = removed.mapped()->GetRemoteId();
+    _remotes->DeleteRemote(remoteId);
+
+    _config->DeleteBlindConfig(id);
+    SaveBlindList();
     return false;
 }
 
@@ -174,7 +239,7 @@ uint16_t Blinds::GetBlindsResponse(char *pcInsert, int iInsertLen, uint16_t tagP
     outputter.Append("{ \"id\": ");
     outputter.Append((int)pos->first);
     outputter.Append(", \"name\": \"");
-    outputter.Append(pos->second->GetName());
+    outputter.AppendEscaped(pos->second->GetName().c_str());
     outputter.Append("\", \"position\": ");
     outputter.Append(pos->second->GetIntermediatePosition());
     outputter.Append(", \"openTime\": ");
@@ -183,15 +248,31 @@ uint16_t Blinds::GetBlindsResponse(char *pcInsert, int iInsertLen, uint16_t tagP
     outputter.Append(pos->second->GetCloseTime());
     outputter.Append(", \"remoteId\": ");
     outputter.Append((int)pos->second->GetRemoteId());
+    outputter.Append(", \"state\": \"");
+    auto md = pos->second->GetMotionDirection();
+    outputter.Append(
+        md > 0 ? "opening" :
+        md < 0 ? "closing" :
+        "stopped");
 
     pos++;
     if(pos != _blinds.end())
     {
-        outputter.Append(" },");
+        outputter.Append("\" },");
         *nextPart = tagPart + 1;
     }
     else
-        outputter.Append(" }");
+        outputter.Append("\" }");
     
     return outputter.BytesWritten();
+}
+
+bool Blinds::IsAPrimaryRemote(uint32_t remoteId)
+{
+    for(auto iter = _blinds.begin(); iter != _blinds.end(); iter++)
+    {
+        if(iter->second->GetRemoteId() == remoteId)
+            return true;
+    }
+    return false;
 }

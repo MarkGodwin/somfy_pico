@@ -5,7 +5,7 @@
 #include <list>
 #include <memory>
 #include "webInterface.h"
-
+#include "scheduler.h"
 
 class MqttClient;
 class SomfyRemotes;
@@ -31,7 +31,14 @@ class Blinds
             return _blinds.count(blindId) > 0;
         }
 
+        bool IsAPrimaryRemote(uint32_t remoteId);
+
+        void SaveBlindState(bool force = false);
+
     private:
+
+        void SaveBlindList();
+
         bool DoAddBlind(const CgiParams &params);
         bool DoUpdateBlind(const CgiParams &params);
         bool DoDeleteBlind(const CgiParams &params);
@@ -49,5 +56,6 @@ class Blinds
 
         std::list<CgiSubscription> _webApi;
         std::list<SsiSubscription> _webData;
+        ScheduledTimer _saveTimer;
 };
 

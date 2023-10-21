@@ -105,10 +105,10 @@ int main()
     if(!apMode)
     {
         mqttClient->Start();
-
-        mqttClient->Subscribe("pico_somfy/test", [](const uint8_t *msg, uint32_t len) {
-            printf("Message recieved: %.*s\n", len, msg);
-        });
+        // Subscribe by wildcard to reduce overhead
+        mqttClient->SubscribeTopic("pico_somfy/blinds/+/cmd");
+        mqttClient->SubscribeTopic("pico_somfy/blinds/+/pos");
+        mqttClient->SubscribeTopic("pico_somfy/remotes/+/cmd");
     }
 
     puts("Starting the Radio\n");
@@ -118,11 +118,10 @@ int main()
     auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
 
     auto blinds = std::make_shared<Blinds>(config, mqttClient, webServer);
-    auto remotes = std::make_shared<SomfyRemotes>(config, blinds, webServer, commandQueue);
+    auto remotes = std::make_shared<SomfyRemotes>(config, blinds, webServer, commandQueue, mqttClient);
     blinds->Initialize(remotes);
 
     auto onOff = false;
-
     
     puts("Starting worker thread...\n");
     commandQueue->Start();
@@ -140,6 +139,10 @@ int main()
 
     puts("Waiting for the command queue to clear...\n");
     commandQueue->Shutdown();
+
+    puts("Saving any unsaved state.\n");
+    remotes->SaveRemoteState();
+    blinds->SaveBlindState(true);
 
     puts("Restarting now!\n");
     sleep_ms(1000);

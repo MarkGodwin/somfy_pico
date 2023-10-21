@@ -11,9 +11,18 @@ ScheduledTimer::ScheduledTimer(std::function<uint32_t()> &&callback, uint32_t ti
     _worker.do_work = TimerCallbackEntry;
     _worker.user_data = this;
 
-    async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(), &_worker, timeout);
+    if(timeout)
+        async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(), &_worker, timeout);
 
 }
+
+void ScheduledTimer::ResetTimer(uint32_t timeout)
+{
+    async_context_remove_at_time_worker(cyw43_arch_async_context(), &_worker);
+    if(timeout)
+        async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(), &_worker, timeout);
+}
+
 
 ScheduledTimer::~ScheduledTimer()
 {
@@ -40,6 +49,7 @@ void ScheduledTimer::TimerCallback(async_context_t *context)
 PendingWorker::PendingWorker(std::function<void()> &&callback)
 :   _callback(callback)
 {
+    memset(&_worker, 0, sizeof(_worker));
     _worker.next = nullptr;
     _worker.do_work = WorkerCallbackEntry;
     _worker.user_data = this;
