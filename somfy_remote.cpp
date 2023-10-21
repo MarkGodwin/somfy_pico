@@ -1,17 +1,17 @@
-#include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/pio.h"
 #include "pico/cyw43_arch.h"
 #include "pico/flash.h"
-#include "radio.h"
-#include "remote.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
-#include "lwip/apps/httpd.h"
 
-#include "dhcpserver.h"
-#include "dnsserver.h"
+#include "radio.h"
+#include "remote.h"
+#include "webInterface.h"
+#include "wifiScanner.h"
+#include "blockStorage.h"
+#include "deviceConfig.h"
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
@@ -28,20 +28,11 @@
 // Hardware reset
 #define PIN_RESET_RADIO 15
 
-
-typedef struct TCP_SERVER_T_ {
-    struct tcp_pcb *server_pcb;
-    bool complete;
-    ip_addr_t gw;
-    async_context_t *context;
-} TCP_SERVER_T;
-
 // This "worker" function is called to safely perform work when instructed by key_pressed_func
 void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker) {
     assert(worker->user_data);
-    printf("Disabling wifi\n");
-    cyw43_arch_disable_ap_mode();
-    ((TCP_SERVER_T*)(worker->user_data))->complete = true;
+    printf("Terminating\n");
+    *(bool *)(worker->user_data) = true;
 }
 
 static async_when_pending_worker_t key_pressed_worker = {
@@ -49,78 +40,21 @@ static async_when_pending_worker_t key_pressed_worker = {
         .do_work = key_pressed_worker_func
 };
 
-const char blind1[] = "{ \"name\": \"Office\" },\n";
-const char blind2[] = "{ \"name\": \"Drawing Rom\" }\n";
-
 void key_pressed_func(void *param) {
     assert(param);
     int key = getchar_timeout_us(0); // get any pending key press but don't wait
     printf("%c", key);
     if (key == 'd' || key == 'D') {
         // We are probably in irq context so call wifi in a "worker"
-        async_context_set_work_pending(((TCP_SERVER_T*)param)->context, &key_pressed_worker);
+        async_context_set_work_pending((async_context_t *)param, &key_pressed_worker);
     }
 }
 
 
-
-#define HEARTBEAT_PERIOD_MS 1000
-
-static void heartbeat_handler(async_context_t *context, async_at_time_worker_t *worker);
-
-static async_at_time_worker_t heartbeat_worker = {
-    .next = NULL,
-    .do_work = heartbeat_handler
-};
-
-static void heartbeat_handler(async_context_t *context, async_at_time_worker_t *worker) {
-
-    // Invert the led
-    static int led_on = true;
-    led_on = !led_on;
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-
-    // Restart timer
-    async_context_add_at_time_worker_in_ms(context, &heartbeat_worker, HEARTBEAT_PERIOD_MS);
-}
-
-
- u16_t ssi_handler (int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart)
- {
-    if(tagIndex == 0)
-    {
-        if(tagPart == 0)
-        {
-            memcpy(pcInsert, blind1, sizeof(blind1)-1);
-            *nextPart = 1;
-            return sizeof(blind1)-1;
-        }
-        if(tagPart == 1)
-        {
-            memcpy(pcInsert, blind2, sizeof(blind2)-1);
-            return sizeof(blind2)-1;
-        }
-
-    }
-    memcpy(pcInsert, "This did something", 18);
-    return 18;
- }
-
-const uint32_t wifiCredsMagic = 0x19841977;
-const uint32_t wifiCredsOffset = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
-
-struct WifiCredentials
-{
-    uint32_t magicNumber;
-    char ssid[64];
-    char password[128];
-};
 
 int main()
 {
     stdio_init_all();
-
-    TCP_SERVER_T *state = (TCP_SERVER_T *)calloc(1, sizeof(TCP_SERVER_T));
 
     gpio_init(PIN_LED);
     gpio_set_dir(PIN_LED, GPIO_OUT);
@@ -144,81 +78,44 @@ int main()
         return -1;
     }
 
-    auto creds = (const WifiCredentials *)(XIP_BASE + wifiCredsOffset);
-    if(creds->magicNumber != wifiCredsMagic)
-    {
-        printf("Flash not initialized - formatting\n");
-        if(flash_safe_execute( [](void *param) {
-            flash_range_erase(wifiCredsOffset, FLASH_SECTOR_SIZE);
-            auto credsSize = (sizeof(WifiCredentials) / FLASH_PAGE_SIZE + 1) * FLASH_PAGE_SIZE;
-            auto blankCreds = (WifiCredentials *)calloc(1, credsSize);
-            blankCreds->magicNumber = wifiCredsMagic;
-            flash_range_program(wifiCredsOffset, (uint8_t *)blankCreds, credsSize);
-        }, NULL, 1000) != PICO_OK)
-        {
-            printf("Unable to format flash");
-            return -1;
-        }
+    // Store flash settings at the very top of Flash memory
+    // ALL STORED DATA WILL BE LOST IF THESE ARE CHANGED
+    const uint32_t StorageSize = 8 * FLASH_SECTOR_SIZE;
+    BlockStorage storage(PICO_FLASH_SIZE_BYTES - StorageSize, StorageSize, 252);
 
-        if(creds->magicNumber != wifiCredsMagic)
-        {
-            puts("Something went wrong with the credentials format\n");
-            return -1;
-        }
+
+    DeviceConfig config(storage);
+    if(config.GetWifiConfig() == nullptr)
+    {
+        puts("WiFi Config not found. Resetting all settings!\n");
+        config.HardReset();
     }
 
+    puts("Checking Device config...\n");
+
+    if(config.GetWifiConfig() == nullptr ||
+        config.GetMqttConfig() == nullptr)
+    {
+        puts("Settings could not be read back. Error!\n");
+        return -1;
+    }
+
+
+    puts("Starting the web interface...\n");
 
     // Get notified if the user presses a key
-    state->context = cyw43_arch_async_context();
-    key_pressed_worker.user_data = state;
+    auto context = cyw43_arch_async_context();
+    auto quit = false;
+    key_pressed_worker.user_data = &quit;
     async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
-    stdio_set_chars_available_callback(key_pressed_func, state);
+    stdio_set_chars_available_callback(key_pressed_func, context);
 
-
-    ip4_addr_t mask;
-    IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
-    IP4_ADDR(ip_2_ip4(&mask), 255, 255, 255, 0);
-
-    dhcp_server_t dhcp_server;
-    dns_server_t dns_server;
-
-
-    if(strlen(creds->ssid)!=0)
-    {
-        puts("Connecting to WiFi");
-        cyw43_arch_enable_sta_mode();
-        cyw43_arch_wifi_connect_async(creds->ssid, creds->password, CYW43_AUTH_WPA2_AES_PSK);
-    }
-    else
-    {
-        const char *ap_name = "picow_test";
-        const char *password = "password";
-
-        puts("Enabling ap mode");
-        cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
-
-        // Start the dhcp server
-        dhcp_server_init(&dhcp_server, &state->gw, &mask);
-
-        // Start the dns server
-        dns_server_init(&dns_server, &state->gw);
-
-    }
-
-
-    async_context_add_at_time_worker_in_ms(cyw43_arch_async_context(), &heartbeat_worker, HEARTBEAT_PERIOD_MS);
-    
-    httpd_init();
-
-    const char *tags[] = {
-        "blinds"
-    };
-    http_set_ssi_handler(ssi_handler, tags, LWIP_ARRAYSIZE(tags));
+    auto webInterface = WebInterface::GetInstance(config);
+    webInterface->Start();
 
     auto onOff = false;
 
-    state->complete = false;
-    while(!state->complete) {
+    while(!quit) {
 
         // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
         // is done via interrupt in the background. This sleep is just an example of some (blocking)
@@ -229,10 +126,12 @@ int main()
         onOff = !onOff;
     }
 
-    dns_server_deinit(&dns_server);
-    dhcp_server_deinit(&dhcp_server);
-    cyw43_arch_deinit();
-    return 0;
+    puts("Exiting now\n");
+
+    // dns_server_deinit(&dns_server);
+    // dhcp_server_deinit(&dhcp_server);
+    // cyw43_arch_deinit();
+    // return 0;
 
 /*    RFM69Radio radio(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
 

@@ -76,8 +76,14 @@
 #define SLIP_DEBUG                  LWIP_DBG_OFF
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
+// Allow <!--#xxx--> substitution
 #define LWIP_HTTPD_SSI                  1
+// For Json, we must remove the comment tag after substitution
 #define LWIP_HTTPD_SSI_INCLUDE_TAG      0
+// Call SSI substitution until no more parts are retured to avoid ram use and SSI buffer overflows during list serialization
 #define LWIP_HTTPD_SSI_MULTIPART        1
+// CGI handler with SSI integration for returning results
+#define LWIP_HTTPD_CGI_SSI              1
+#define LWIP_HTTPD_FILE_STATE           1
 
 #define HTTPD_FSDATA_FILE "../../../../fsdata.c"

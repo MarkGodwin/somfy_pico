@@ -29,6 +29,10 @@ add_executable(somfy_remote
   somfy_remote.cpp
   radio.cpp
   remote.cpp
+  webInterface.cpp
+  wifiScanner.cpp
+  blockStorage.cpp
+  deviceConfig.cpp
   dhcpserver/dhcpserver.c
   dnsserver/dnsserver.c
   #fs.c

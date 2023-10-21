@@ -1,18 +1,15 @@
-build/
-fs/
-
-makefsdata
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-web-interface/node_modules
-web-interface/.pnp
+/node_modules
+/.pnp
 .pnp.js
 
 # testing
-web-interface/coverage
+/coverage
 
 # production
-web-interface/build
+/build
 
 # misc
 .DS_Store
