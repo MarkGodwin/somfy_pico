@@ -3,7 +3,7 @@
 
 class RFM69Radio;
 
-enum SomfyButton
+enum SomfyButton : int
 {
     My = 1,
     Up = 2,
@@ -12,6 +12,9 @@ enum SomfyButton
     SunDetectorOn = My | Prog,
     SunDetectorOff = Up | Prog
 };
+
+const int ShortPress = 3;
+const int LongPress = 12;
 
 
 class SomfyRemote

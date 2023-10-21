@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pico/async_context.h"
 #include <functional>
 
 /// @brief Trivial wrapper around async_at_time_worker API
@@ -29,14 +30,11 @@ class PendingWorker
         PendingWorker(std::function<void()> &&callback);
         ~PendingWorker();
 
-        void ScheduleWork()
-        {
-            async_context_set_work_pending(cyw43_arch_async_context(), &_worker);
-        }
+        void ScheduleWork();
 
     private:
         std::function<void()> _callback;
         async_when_pending_worker_t _worker;
-        static void WorkerCallbackEntry(async_context_t *context, async_at_time_worker_t *worker);
+        static void WorkerCallbackEntry(async_context_t *context, async_when_pending_worker_t *worker);
         void WorkerCallback(async_context_t *context);
 };

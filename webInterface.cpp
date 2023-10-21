@@ -12,16 +12,20 @@
 
 
 // HTTPD callbacks aren't conducive to multiple instances
-WebInterface *_globalInstance;
+WebServer *_globalInstance;
 
-WebInterface::WebInterface(DeviceConfig &config, ServiceControl &service, IWifiConnection &wifiConnection, WifiScanner &wifiScanner, bool apMode)
-: _config(config), _service(service), _wifiConnection(wifiConnection), _wifiScanner(wifiScanner), _apMode(apMode)
+WebServer::WebServer(std::shared_ptr<DeviceConfig> config, ServiceControl &service, std::shared_ptr<IWifiConnection> wifiConnection, std::shared_ptr<WifiScanner> wifiScanner, bool apMode)
+:   _config(std::move(config)),
+    _service(service),
+    _wifiConnection(std::move(wifiConnection)),
+    _wifiScanner(std::move(wifiScanner)),
+    _apMode(apMode)
 {
     _globalInstance = this;
 }
 
 struct CgiContext {
-    WebInterface *pThis;
+    WebServer *pThis;
     bool result;
 };
 
@@ -52,7 +56,7 @@ extern "C" {
 }
 
 
- uint16_t WebInterface::HandleResponseEntry(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, void *connectionState)
+ uint16_t WebServer::HandleResponseEntry(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, void *connectionState)
  {
     auto ctx = (CgiContext *)connectionState;
     return ctx->pThis->HandleResponse(tagIndex, pcInsert, iInsertLen, tagPart, nextPart, ctx->result);
@@ -77,13 +81,13 @@ const char *tags[] = {
 #define TAGINDEX_MQTTUSER 5
 #define TAGINDEX_MQTTTOPIC 6
 
- uint16_t WebInterface::HandleResponse(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult)
+ uint16_t WebServer::HandleResponse(int tagIndex, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult)
  {
     switch(tagIndex)
     {
         case TAGINDEX_SSID:
         {
-            auto cfg = _config.GetWifiConfig();
+            auto cfg = _config->GetWifiConfig();
             auto ssidLen = strnlen(cfg->ssid, sizeof(cfg->ssid));
             memcpy(pcInsert, cfg->ssid, ssidLen);
             return ssidLen;
@@ -92,14 +96,14 @@ const char *tags[] = {
         {
             if(tagPart == 0)
             {
-                _wifiScanner.CollectResults();
+                _wifiScanner->CollectResults();
 
                 // Trigger another WiFi Scan for next time the page refreshes
                 if(!_apMode)
-                    _wifiScanner.TriggerScan();
+                    _wifiScanner->TriggerScan();
             }
 
-            auto &ssids = _wifiScanner.GetSsids();
+            auto &ssids = _wifiScanner->GetSsids();
             char *writeOff = pcInsert;
             if(tagPart >= ssids.size())
                 return 0;
@@ -129,14 +133,14 @@ const char *tags[] = {
 
         case TAGINDEX_MQTTADDR:
         {
-            auto cfg = _config.GetMqttConfig();
+            auto cfg = _config->GetMqttConfig();
             auto len = strnlen(cfg->brokerAddress, sizeof(cfg->brokerAddress));
             memcpy(pcInsert, cfg->brokerAddress, len);
             return len;
         }
         case TAGINDEX_MQTTPORT:
         {
-            auto cfg = _config.GetMqttConfig();
+            auto cfg = _config->GetMqttConfig();
             char buf[16];
             auto len = sprintf(buf, "%d", cfg->port);
             memcpy(pcInsert, buf, len);
@@ -144,14 +148,14 @@ const char *tags[] = {
         }
         case TAGINDEX_MQTTUSER:
         {
-            auto cfg = _config.GetMqttConfig();
+            auto cfg = _config->GetMqttConfig();
             auto len = strnlen(cfg->username, sizeof(cfg->username));
             memcpy(pcInsert, cfg->username, len);
             return len;
         }
         case TAGINDEX_MQTTTOPIC:
         {
-            auto cfg = _config.GetMqttConfig();
+            auto cfg = _config->GetMqttConfig();
             auto len = strnlen(cfg->topic, sizeof(cfg->topic));
             if(len > iInsertLen)
                 len = iInsertLen;
@@ -164,7 +168,7 @@ const char *tags[] = {
     return 0;
  }
 
-void WebInterface::Start()
+void WebServer::Start()
 {
     httpd_init();
 
@@ -172,7 +176,7 @@ void WebInterface::Start()
 
 }
 
-bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
+bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
 {
     printf("CGI executed: %s\n", uri);
 
@@ -181,7 +185,11 @@ bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
         printf("    %s = %s\n", pcParam[a], pcValue[a]);
     }
 
-    if(!strcmp(uri, "/api/configure.json"))
+    if(!strcmp(uri, "/api/command.json"))
+    {
+        return DispatchCommand(iNumParams, pcParam, pcValue);
+    }
+    else if(!strcmp(uri, "/api/configure.json"))
     {
         std::map<std::string, std::string> params;
         for(auto a = 0; a < iNumParams; a++)
@@ -201,12 +209,12 @@ bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
             auto &password = params["password"];
             if(password == "********")
             {
-                auto oldCConfig = _config.GetWifiConfig();
+                auto oldCConfig = _config->GetWifiConfig();
                 strlcpy(cfg.password, oldCConfig->password, sizeof(cfg.password));
             }
 
             puts("Saving config\n");
-            _config.SaveWifiConfig(&cfg);
+            _config->SaveWifiConfig(&cfg);
             puts("Restarting service\n");
             _service.StopService();
             return true;
@@ -232,7 +240,7 @@ bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
             auto &password = params["password"];
             if(password == "********")
             {
-                auto oldCConfig = _config.GetMqttConfig();
+                auto oldCConfig = _config->GetMqttConfig();
                 strlcpy(cfg.password, oldCConfig->password, sizeof(cfg.password));
             }
             else
@@ -241,7 +249,7 @@ bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
 
 
             puts("Saving config\n");
-            _config.SaveMqttConfig(&cfg);
+            _config->SaveMqttConfig(&cfg);
             puts("Restarting service\n");
             _service.StopService();
             return true;
@@ -255,4 +263,57 @@ bool WebInterface::HandleRequest(fs_file *file, const char *uri, int iNumParams,
     }
 
     return false;
+}
+
+void WebServer::SubscribeCommand(uint32_t objectId, std::string command, CgiSubscribeFunc &&callback)
+{
+    _subscriptions.insert({ std::make_pair(objectId, command), callback});
+
+}
+
+void WebServer::UnsubscribeCommand(uint32_t objectId, std::string command)
+{
+    _subscriptions.erase(std::make_pair(objectId, command));
+}
+
+
+bool WebServer::DispatchCommand(int iNumParams, char **pcParam, char **pcValue)
+{
+    if(iNumParams < 3)
+    {
+        puts("Bad command received - not enough arguments\n");
+        return false;
+    }
+    const char *idstr = nullptr;
+    const char *command = nullptr;
+    const char *payload = nullptr;
+
+    for(auto a = 0; a < iNumParams; a++)
+    {
+        if(!strcmp(pcParam[a], "command"))
+            command = pcValue[a];
+        else if(!strcmp(pcParam[a], "id"))
+            idstr = pcValue[a];
+        else if(!strcmp(pcParam[a], "payload"))
+            payload = pcValue[a];
+    }
+
+    if(!idstr || !command || !payload)
+    {
+        puts("Bad command received - missing arguments\n");
+        return false;
+    }
+
+    uint32_t id;
+    sscanf(idstr, "%d", &id);
+
+    auto sub = _subscriptions.find(std::make_pair(id, command));
+    if(sub == _subscriptions.end())
+    {
+        printf("No subscriber for (%s-%s)=%s\n", idstr, command, payload);
+        return false;
+    }
+
+    sub->second((const uint8_t *)payload, strlen(payload));
+    return true;
 }

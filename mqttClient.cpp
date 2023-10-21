@@ -8,9 +8,9 @@
 #include "deviceConfig.h"
 #include "iwifiConnection.h"
 
-MqttClient::MqttClient(DeviceConfig &config, IWifiConnection &wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload)
-: _config(config),
-  _wifi(wifi),
+MqttClient::MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload)
+: _config(std::move(config)),
+  _wifi(std::move(wifi)),
   _statusTopic(statusTopic),
   _onlinePayload(onlinePayload),
   _offlinePayload(offlinePayload),
@@ -20,7 +20,7 @@ MqttClient::MqttClient(DeviceConfig &config, IWifiConnection &wifi, const char *
 
 void MqttClient::Start()
 {
-    auto mqttConfig = _config.GetMqttConfig();
+    auto mqttConfig = _config->GetMqttConfig();
     _client = mqtt_client_new();
 
     if(!strnlen(mqttConfig->brokerAddress, sizeof(mqttConfig->brokerAddress)))
@@ -32,13 +32,13 @@ void MqttClient::Start()
 
 void MqttClient::DoConnect()
 {
-    if(!_wifi.IsConnected())
+    if(!_wifi->IsConnected())
     {
         puts("Not connecting to MQTT, because WiFi is not connected\n");
         return;
     }
 
-    auto mqttConfig = _config.GetMqttConfig();
+    auto mqttConfig = _config->GetMqttConfig();
     printf("Connecting to MQTT server at %s:%d\n", mqttConfig->brokerAddress, mqttConfig->port);
     mqtt_connect_client_info_t ci;
     memset(&ci, 0, sizeof(ci));

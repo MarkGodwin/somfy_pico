@@ -12,7 +12,7 @@ class DeviceConfig;
 class WifiConnection : public IWifiConnection
 {
     public:
-        WifiConnection(DeviceConfig &config, bool apMode);
+        WifiConnection(std::shared_ptr<DeviceConfig> config, bool apMode);
         void Start();
 
         virtual bool IsConnected();
@@ -22,7 +22,7 @@ class WifiConnection : public IWifiConnection
         uint32_t WifiWatchdog();
 
         std::unique_ptr<ScheduledTimer> _wifiWatchdog;
-        DeviceConfig &_config;
+        std::shared_ptr<DeviceConfig> _config;
         bool _apMode;
         // For AP mode        
         dhcp_server_t _dhcp_server;

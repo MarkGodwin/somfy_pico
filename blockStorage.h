@@ -8,7 +8,7 @@ public:
     /// @brief Initialize the block storage
     /// @param base Base address in flash for block storage - must be multiple of FLASH_SECTOR_SIZE (4096)
     /// @param size size of the block storage - must be multiple of FLASH_SECTOR_SIZE (4096)
-    /// @param blockSize max size of each block (multiples of 256 - 4 reccomended)
+    /// @param blockSize max size of each block (will be rounded up to multiples of FLASH_PAGE_SIZE - 4)
     BlockStorage(uint32_t base, size_t size, size_t blockSize);
 
     /// @brief Returns a pointer to the block
@@ -24,6 +24,8 @@ public:
 
     /// @brief Formats (clears) the entire block storage. DANGER!
     void Format();
+
+    uint32_t BlockSize() { return _blockPages * 256 - 4; }
 
 private:
     uint32_t FindBlock(uint32_t blockId) const;

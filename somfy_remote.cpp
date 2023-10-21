@@ -63,21 +63,19 @@ int main()
     // Store flash settings at the very top of Flash memory
     // ALL STORED DATA WILL BE LOST IF THESE ARE CHANGED
     const uint32_t StorageSize = 8 * FLASH_SECTOR_SIZE;
-    BlockStorage storage(PICO_FLASH_SIZE_BYTES - StorageSize, StorageSize, 252);
 
-
-    DeviceConfig config(storage);
-    if(config.GetWifiConfig() == nullptr)
+    auto config = std::make_shared<DeviceConfig>(StorageSize, 252);
+    if(config->GetWifiConfig() == nullptr)
     {
         puts("WiFi Config not found. Resetting all settings!\n");
-        config.HardReset();
+        config->HardReset();
     }
 
     puts("Checking Device config...\n");
 
-    auto wifiConfig = config.GetWifiConfig();
+    auto wifiConfig = config->GetWifiConfig();
     if(wifiConfig == nullptr ||
-        config.GetMqttConfig() == nullptr)
+        config->GetMqttConfig() == nullptr)
     {
         puts("Settings could not be read back. Error!\n");
         return -1;
@@ -95,26 +93,26 @@ int main()
     // TODO: Read an input pin for forcing AP mode
     auto apMode = !wifiConfig->ssid[0];
 
-    WifiConnection wifiConnection(config, apMode);
+    auto wifiConnection = std::make_shared<WifiConnection>(config, apMode);
 
     // Do an initial WiFi scan before entering AP mode
-    WifiScanner wifiScanner;
-    wifiScanner.TriggerScan();
-    wifiScanner.WaitForScan();
-    wifiScanner.CollectResults();    
+    auto wifiScanner = std::make_shared<WifiScanner>();
+    wifiScanner->TriggerScan();
+    wifiScanner->WaitForScan();
+    wifiScanner->CollectResults();    
 
     // Now connect to WiFi or Enable AP mode
-    wifiConnection.Start();
+    wifiConnection->Start();
 
-    WebInterface webInterface(config, service, wifiConnection, wifiScanner, apMode);
-    webInterface.Start();
+    auto webInterface = std::make_shared<WebServer>(config, service, wifiConnection, wifiScanner, apMode);
+    webInterface->Start();
 
-    MqttClient mqttClient(config, wifiConnection, "pico_somfy/status", "online", "offline");
+    auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline");
     if(!apMode)
     {
-        mqttClient.Start();
+        mqttClient->Start();
 
-        mqttClient.Subscribe("pico_somfy/test", [](const uint8_t *msg, uint32_t len) {
+        mqttClient->Subscribe("pico_somfy/test", [](const uint8_t *msg, uint32_t len) {
             printf("Message recieved: %.*s\n", len, msg);
         });
     }

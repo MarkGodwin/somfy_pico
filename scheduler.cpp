@@ -52,7 +52,12 @@ PendingWorker::~PendingWorker()
     async_context_remove_when_pending_worker(cyw43_arch_async_context(), &_worker);
 }
 
-void PendingWorker::WorkerCallbackEntry(async_context_t *context, async_at_time_worker_t *worker)
+void PendingWorker::ScheduleWork()
+{
+    async_context_set_work_pending(cyw43_arch_async_context(), &_worker);
+}
+
+void PendingWorker::WorkerCallbackEntry(async_context_t *context, async_when_pending_worker_t *worker)
 {
     auto pThis = (PendingWorker *)worker->user_data;
     pThis->WorkerCallback(context);

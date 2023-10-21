@@ -17,7 +17,7 @@ class MqttClient
 {
     public:
 
-        MqttClient(DeviceConfig &config, IWifiConnection &wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload);
+        MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload);
 
         void Start();
 
@@ -50,8 +50,8 @@ class MqttClient
         void PublishCallback(err_t result);
 
         std::unique_ptr<ScheduledTimer> _watchdogTimer;
-        IWifiConnection &_wifi;
-        DeviceConfig &_config;
+        std::shared_ptr<IWifiConnection> _wifi;
+        std::shared_ptr<DeviceConfig> _config;
         mqtt_client_t *_client;
 
         const char *_statusTopic;
@@ -65,4 +65,24 @@ class MqttClient
         uint32_t _payloadReceived;
 
 
+};
+
+/// @brief Helper class for managing a subscription lifetime
+class Subscription
+{
+    public:
+        Subscription(std::shared_ptr<MqttClient> client, std::string topic, SubscribeFunc &&callback)
+        :   _client(client),
+             _topic(std::move(topic))
+        {
+            _client->Subscribe(_topic.c_str(), std::forward<SubscribeFunc>(callback));
+        }
+
+        ~Subscription()
+        {
+            _client->Unsubscribe(_topic.c_str());
+        }
+    private:
+        std::shared_ptr<MqttClient> _client;
+        std::string _topic;
 };

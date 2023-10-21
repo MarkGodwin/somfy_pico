@@ -5,9 +5,9 @@
 #include "wifiConnection.h"
 #include "deviceConfig.h"
 
-WifiConnection::WifiConnection(DeviceConfig &config, bool apMode)
+WifiConnection::WifiConnection(std::shared_ptr<DeviceConfig> config, bool apMode)
 : _apMode(apMode),
-  _config(config)
+  _config(std::move(config))
 {
     // Start in STA mode so we can do an initial WiFi scan before switching to AP mode
     cyw43_arch_enable_sta_mode();
@@ -42,7 +42,7 @@ void WifiConnection::Start()
     }
     else
     {
-        auto cfg = _config.GetWifiConfig();
+        auto cfg = _config->GetWifiConfig();
 
         printf("Connecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_blocking(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
@@ -75,7 +75,7 @@ uint32_t WifiConnection::WifiWatchdog()
     {
         printf("Wifi not connected (%d)\n", state);
 
-        auto cfg = _config.GetWifiConfig();
+        auto cfg = _config->GetWifiConfig();
         printf("Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_async(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
         return 1000;

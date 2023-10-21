@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pico/cyw43_arch.h"
 #include <vector>
 #include <string>
 

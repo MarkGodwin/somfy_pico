@@ -28,7 +28,10 @@ pico_sdk_init()
 add_executable(somfy_remote 
   somfy_remote.cpp
   radio.cpp
+  remotes.cpp
   remote.cpp
+  blinds.cpp
+  blind.cpp
   scheduler.cpp
   webInterface.cpp
   wifiConnection.cpp
