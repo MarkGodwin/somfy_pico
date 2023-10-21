@@ -95,11 +95,11 @@ void SomfyRemote::DisassociateBlind(uint16_t blindId)
 
 void SomfyRemote::OnCommand(const uint8_t *payload, uint32_t length)
 {
-    if (length == 2 && memcmp(payload, "up", 2))
+    if (length == 2 && !memcmp(payload, "up", 2))
         PressButtons(SomfyButton::Up, ShortPress);
-    else if (length == 4 && memcmp(payload, "down", 4))
+    else if (length == 4 && !memcmp(payload, "down", 4))
         PressButtons(SomfyButton::Down, ShortPress);
-    else if (length == 4 && memcmp(payload, "stop", 4))
+    else if (length == 4 && !memcmp(payload, "stop", 4))
         PressButtons(SomfyButton::My, ShortPress);
 }
 
@@ -121,6 +121,7 @@ void SomfyRemote::PublishDiscovery()
     if (_blinds->IsAPrimaryRemote(_remoteId))
     {
         puts("Primary remote for blind not published\n");
+        _needsPublish = false;
         return;
     }
     printf("Discovery topic: %s\n", mqttConfig->topic);
@@ -144,7 +145,7 @@ bool SomfyRemote::PublishDiscovery(const char *cmd, const char *name, const char
     payloadWriter.Append(
         "\", \"avty_t\": \"pico_somfy/status\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\", \"cmd_t\": \"pico_somfy/remotes/");
     payloadWriter.AppendHex(_remoteId);
-    payloadWriter.Append("/cmd\", \"pl_press\": \"");
+    payloadWriter.Append("/cmd\", \"pl_prs\": \"");
     payloadWriter.Append(cmd);
     payloadWriter.Append("\", \"uniq_id\": \"psrem_");
     payloadWriter.AppendHex(_remoteId);

@@ -1,4 +1,4 @@
 {
-    "apMode": <!--apmode-->,
-    "mqttConnected": <!--mqttconn-->
+    "apMode": <!--#apmode-->,
+    "mqttConnected": <!--#mqttconn-->
 }

@@ -84,7 +84,7 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
     PgmData d = {blockId, freeBlock, data, size};
 
     printf("Flashing new record at... 0x%08x (0x%08x)\n", d.offset, d.size);
-    flash_safe_execute([](void *p) {
+    auto result = flash_safe_execute([](void *p) {
         // Copy the first pages directly
         auto params = (PgmData *)p;
 
@@ -113,6 +113,10 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
         }
 
     }, &d, 1000);
+    if(result != PICO_OK)
+    {
+        printf("Write failed (%d)\n", result);
+    }
 
 }
 
@@ -133,11 +137,15 @@ void BlockStorage::ClearBlock(uint32_t blockId)
 void BlockStorage::Format()
 {
     printf("Formatting entire block storage: 0x%08x - 0x%08x\n", _base, _sectors * FLASH_SECTOR_SIZE);
-    flash_safe_execute([](void *p) {
+    auto result = flash_safe_execute([](void *p) {
         auto pthis = (BlockStorage *)p;
         flash_range_erase(pthis->_base, pthis->_sectors * FLASH_SECTOR_SIZE);
     }, this, 1000);
-    puts("Formatting complete");
+
+    if(result == PICO_OK)
+        puts("Formatting complete");
+    else
+        printf("Format failed (%d)\n", result);
 }
 
 void BlockStorage::DeletePage(uint32_t pageOffset)

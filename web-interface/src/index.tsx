@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import 'bootstrap/dist/css/bootstrap.css';
 
 import {
-  createBrowserRouter,
+  createHashRouter,
   createRoutesFromElements,
   Route,
   RouterProvider,
@@ -39,8 +39,6 @@ export function AppModeSwitcher() {
 
         if(!cancelled)
         {
-          response.apMode = Math.random() > 0.5;
-          response.mqttConnected = Math.random() > 0.5;
           setAppStatus(response);
         }
       }
@@ -67,7 +65,7 @@ export function AppModeSwitcher() {
     // Limited UI for connecting to WiFi
     return (<HomePage {...appStatus} />);
 
-  const router = createBrowserRouter(
+  const router = createHashRouter(
     createRoutesFromElements(
       <Route path="/" element={<App/>}
       errorElement={<ErrorPage/>}>

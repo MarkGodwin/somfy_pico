@@ -14,7 +14,8 @@ MqttClient::MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWi
   _statusTopic(statusTopic),
   _onlinePayload(onlinePayload),
   _offlinePayload(offlinePayload),
-  _payload(nullptr)
+  _payload(nullptr),
+  _client(nullptr)
 {
 }
 
@@ -83,7 +84,7 @@ uint32_t MqttClient::MqttWatchdog()
 
 bool MqttClient::IsConnected()
 {
-    return mqtt_client_is_connected(_client);
+    return _client && mqtt_client_is_connected(_client);
 }
 
 void MqttClient::SubscribeTopic(const char *topic)

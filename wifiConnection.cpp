@@ -22,7 +22,7 @@ void WifiConnection::Start()
         puts("Disabling scan mode");
         cyw43_arch_disable_sta_mode();
 
-        const char *ap_name = "picow_test";
+        const char *ap_name = "pico_somfy";
         const char *password = "password";
 
         puts("Enabling ap mode");
@@ -67,7 +67,7 @@ bool WifiConnection::IsConnected()
 
 uint32_t WifiConnection::WifiWatchdog()
 {
-    auto state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+    auto state = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
 
     // Indicate the state with the LED
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, state > 0);
@@ -78,14 +78,23 @@ uint32_t WifiConnection::WifiWatchdog()
         auto cfg = _config->GetWifiConfig();
         printf("Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_async(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
-        return 1000;
+        if(result)
+        {
+            printf("Unable to begin reconnect (%d)\n", result);
+        }
+        return 5000;
+    }
+    else if(state == CYW43_LINK_UP)
+    {
+        // Restart timer
+        printf("Woof! WiFi looks good\n", state);
+      
+        return 60000;
     }
     else
     {
-        // Restart timer
-        printf("Woof (%d)\n", state);
-       
-        return 60000;
+        printf("WiFi connected, but no IP assigned (%d)\n", state);
+        return 10000;
     }
 }
 

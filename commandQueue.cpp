@@ -41,6 +41,12 @@ void RadioCommandQueue::Shutdown()
 
     queue_add_blocking(&_queue, &entry);
 
+    // Wait until our Stop command is removed from the queue
+    while(queue_get_level(&_queue))
+    {
+        sleep_ms(100);
+    } 
+    sleep_ms(100);
 }
 
 // HACK. But there can be only 1 anyway

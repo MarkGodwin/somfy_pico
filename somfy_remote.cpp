@@ -27,23 +27,59 @@
 // Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
 #define SPI_PORT spi_default
 #define PIN_MISO 4
-#define PIN_SCK  6
-#define PIN_MOSI 7
+#define PIN_SCK  2
+#define PIN_MOSI 3
+#define PIN_CS_RADIO   5
+
+// Hard buttons
+#define PIN_RESET 0
+#define PIN_WIFI 1
 
 // Status LED
-#define PIN_LED 13
+#define PIN_LED_R 11
+#define PIN_LED_G 12
+#define PIN_LED_B 13
 
-#define PIN_CS_RADIO   5
+// How much flash memory to use to store blind/remote/wifi config
+#define STORAGE_SECTORS 32
+#define STORAGE_BLOCK_SIZE 252
+
 // Hardware reset
 #define PIN_RESET_RADIO 15
 
+const WifiConfig *checkConfig(
+    std::shared_ptr<DeviceConfig> config);
+
+void runServiceMode(
+    std::shared_ptr<WebServer> webServer,
+    std::shared_ptr<DeviceConfig> config,
+    std::shared_ptr<WifiConnection> wifiConnection,
+    std::shared_ptr<RadioCommandQueue> commandQueue,
+    std::shared_ptr<ServiceControl> service);
+
+void runSetupMode(
+    std::shared_ptr<WebServer> webServer,
+    std::shared_ptr<ServiceControl> service);
+
+bool checkButtonHeld(int inputPin, int outputPin);
 
 int main()
 {
     stdio_init_all();
 
-    gpio_init(PIN_LED);
-    gpio_set_dir(PIN_LED, GPIO_OUT);
+    gpio_init(PIN_LED_R);
+    gpio_set_dir(PIN_LED_R, GPIO_OUT);
+    gpio_init(PIN_LED_G);
+    gpio_set_dir(PIN_LED_G, GPIO_OUT);
+    gpio_init(PIN_LED_B);
+    gpio_set_dir(PIN_LED_B, GPIO_OUT);
+
+    gpio_init(PIN_RESET);
+    gpio_set_dir(PIN_RESET, GPIO_IN);
+    gpio_set_pulls(PIN_RESET, true, false);
+    gpio_init(PIN_WIFI);
+    gpio_set_dir(PIN_WIFI, GPIO_IN);
+    gpio_set_pulls(PIN_WIFI, true, false);
 
     // SPI initialisation. Set SPI speed to 0.5MHz. Absolute max supported is 10Mhz
     spi_init(SPI_PORT, 500*1000);
@@ -51,41 +87,47 @@ int main()
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
 
-    sleep_ms(5000);
-    
+    sleep_ms(8000);
+
+   
     if (cyw43_arch_init()) {
         printf("Wi-Fi init failed");
+        gpio_put(PIN_LED_R, true);
         return -1;
     }
+
+    puts("Starting the Radio\n");
+    auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
+
+    // We'll run radio commands from the core 1 thread
+    auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
+    puts("Starting worker thread...\n");
+    commandQueue->Start();
 
     // Store flash settings at the very top of Flash memory
     // ALL STORED DATA WILL BE LOST IF THESE ARE CHANGED
-    const uint32_t StorageSize = 8 * FLASH_SECTOR_SIZE;
+    const uint32_t StorageSize = STORAGE_SECTORS * FLASH_SECTOR_SIZE;
 
-    auto config = std::make_shared<DeviceConfig>(StorageSize, 252);
-    if(config->GetWifiConfig() == nullptr)
+    auto config = std::make_shared<DeviceConfig>(StorageSize, STORAGE_BLOCK_SIZE);
+    auto wifiConfig = checkConfig(config);
+    if(wifiConfig == nullptr)
     {
-        puts("WiFi Config not found. Resetting all settings!\n");
-        config->HardReset();
-    }
-
-    puts("Checking Device config...\n");
-
-    auto wifiConfig = config->GetWifiConfig();
-    if(wifiConfig == nullptr ||
-        config->GetMqttConfig() == nullptr)
-    {
-        puts("Settings could not be read back. Error!\n");
+        gpio_put(PIN_LED_R, true);
+        gpio_put(PIN_LED_B, true);
         return -1;
     }
 
+    auto apMode = !wifiConfig->ssid[0];
 
     puts("Starting the web interface...\n");
 
     auto service = std::make_shared<ServiceControl>();
 
-    // TODO: Read an input pin for forcing AP mode
-    auto apMode = !wifiConfig->ssid[0];
+    if(checkButtonHeld(PIN_WIFI, PIN_LED_G))
+    {
+        puts("Starting in WIFI Setup mode, as button WIFI button is pressed");
+        apMode = true;
+    }
 
     auto wifiConnection = std::make_shared<WifiConnection>(config, apMode);
 
@@ -99,35 +141,98 @@ int main()
 
     auto webServer = std::make_shared<WebServer>(config, wifiConnection);
     webServer->Start();
-
     auto configService = std::make_shared<ConfigService>(config, webServer, wifiScanner, service);
 
-    auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline");
-    if(!apMode)
+    if(apMode)
     {
-        mqttClient->Start();
-        // Subscribe by wildcard to reduce overhead
-        mqttClient->SubscribeTopic("pico_somfy/blinds/+/cmd");
-        mqttClient->SubscribeTopic("pico_somfy/blinds/+/pos");
-        mqttClient->SubscribeTopic("pico_somfy/remotes/+/cmd");
+        runSetupMode(webServer, service);
+    }
+    else
+    {
+        runServiceMode(webServer, config, wifiConnection, commandQueue, service);
     }
 
-    puts("Starting the Radio\n");
-    auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
+    puts("Restarting now!\n");
+    sleep_ms(1000);
 
-    // We'll run radio commands from the core 1 thread
-    auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
+    if(service->IsFirmwareUpdateRequested())
+    {
+        reset_usb_boot(0,0);
+    }
+    else
+    {
+        watchdog_reboot(0,0,500);
+    }
+    sleep_ms(5000);
+    puts("ERM!!! Why no reboot?\n");
+
+}
+
+bool checkButtonHeld(int inputPin, int outputPin)
+{
+    int a = 0;
+    bool flash = false;
+    for(a = 0; !gpio_get(inputPin) && a < 100; a++)
+    {
+        gpio_put(outputPin, a & 1);
+        sleep_ms(50);
+    }
+    gpio_put(outputPin, false);
+    return a == 100;
+}
+
+const WifiConfig *checkConfig(
+    std::shared_ptr<DeviceConfig> config)
+{
+    auto needReset = config->GetWifiConfig() == nullptr;
+    if(needReset)
+        puts("WiFi Config not found.\n");
+    else
+    {
+        needReset = checkButtonHeld(PIN_RESET, PIN_LED_R);
+    }
+
+    if(needReset)
+    {
+        puts("Resetting all settings!");
+        config->HardReset();
+    }
+
+    puts("Checking Device config...\n");
+
+    auto wifiConfig = config->GetWifiConfig();
+    if(wifiConfig == nullptr ||
+        config->GetMqttConfig() == nullptr)
+    {
+        puts("Settings could not be read back. Error!\n");
+        return nullptr;
+    }
+    return wifiConfig;
+}
+
+void runServiceMode(
+    std::shared_ptr<WebServer> webServer,
+    std::shared_ptr<DeviceConfig> config,
+    std::shared_ptr<WifiConnection> wifiConnection,
+    std::shared_ptr<RadioCommandQueue> commandQueue,
+    std::shared_ptr<ServiceControl> service)
+{
+
+    auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline");
+
+    mqttClient->Start();
+    // Subscribe by wildcard to reduce overhead
+    mqttClient->SubscribeTopic("pico_somfy/blinds/+/cmd");
+    mqttClient->SubscribeTopic("pico_somfy/blinds/+/pos");
+    mqttClient->SubscribeTopic("pico_somfy/remotes/+/cmd");
 
     auto blinds = std::make_shared<Blinds>(config, mqttClient, webServer);
     auto remotes = std::make_shared<SomfyRemotes>(config, blinds, webServer, commandQueue, mqttClient);
     blinds->Initialize(remotes);
 
-    auto onOff = false;
+    auto onOff = 0x04;
     
-    puts("Starting worker thread...\n");
-    commandQueue->Start();
-
-    ServiceStatus statusApi(webServer, mqttClient, apMode);
+    ServiceStatus statusApi(webServer, mqttClient, false);
 
     ScheduledTimer republishTimer([&blinds, &remotes] () {
         // Try to republish discovery information for one device
@@ -147,10 +252,11 @@ int main()
     auto mqttConnected = false;
 
     puts("Entering main loop...\n");
+    bool resetPushed = false;
     while(!service->IsStopRequested()) {
 
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
-        sleep_ms(1000);
+        sleep_ms(250);
 
         // Lazy man's notification of MQTT reconnection outside of an IRQ callback
         if(!mqttConnected)
@@ -168,8 +274,32 @@ int main()
         }
 
         // Show Mark we aren't dead
-        gpio_put(PIN_LED, onOff);
-        onOff = !onOff;
+        gpio_put(PIN_LED_R, onOff & 0x01);
+        gpio_put(PIN_LED_G, onOff & 0x02);
+        gpio_put(PIN_LED_B, onOff & 0x04);
+        if(onOff == 0)
+            onOff = 0x04;
+        else
+            onOff >>= 1;
+
+        if(!gpio_get(PIN_RESET))
+        {
+            if(resetPushed)
+            {
+                puts("Reset pushed!");
+                service->StopService(false);
+            }
+            resetPushed = true;
+        }
+        else
+        {
+            resetPushed = false;
+        }
+        if(!gpio_get(PIN_WIFI))
+        {
+            puts("WIFI pushed");
+        }
+
     }
 
     republishTimer.ResetTimer(0);
@@ -182,17 +312,32 @@ int main()
     remotes->SaveRemoteState();
     blinds->SaveBlindState(true);
 
-    puts("Restarting now!\n");
-    sleep_ms(1000);
+}
 
-    if(service->IsFirmwareUpdateRequested())
-    {
-        reset_usb_boot(0,0);
+void runSetupMode(
+    std::shared_ptr<WebServer> webServer,
+    std::shared_ptr<ServiceControl> service)
+{
+    ServiceStatus statusApi(webServer, nullptr, true);
+
+    puts("Entering setup loop...\n");
+    auto onOff = false;
+    while(!service->IsStopRequested()) {
+
+        // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
+        sleep_ms(1000);
+
+        // Show Mark we aren't dead
+        gpio_put(PIN_LED_G, onOff);
+        onOff = !onOff;
+
+        if(!gpio_get(PIN_RESET))
+        {
+            printf("Reset pushed\n");
+            service->StopService();
+        }
+        if(!gpio_get(PIN_WIFI))
+            printf("WIFI pushed\n");
     }
-    else
-    {
-        watchdog_reboot(0,0,500);
-    }
-    sleep_ms(5000);
-    puts("ERM!!! Why no reboot?\n");
+
 }

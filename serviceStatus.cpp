@@ -17,7 +17,7 @@ ServiceStatus::ServiceStatus(std::shared_ptr<WebServer> webServer, std::shared_p
 :   _mqttClient(mqttClient),
     _apMode(apMode),
     _apModeSub(webServer, "apmode", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return OutputBool(_apMode, pcInsert); }),
-    _mqttSub(webServer, "mqttconn", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return OutputBool(_mqttClient->IsConnected(), pcInsert); })
+    _mqttSub(webServer, "mqttconn", [this] (char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart) { return OutputBool(_mqttClient && _mqttClient->IsConnected(), pcInsert); })
 {
     
 }

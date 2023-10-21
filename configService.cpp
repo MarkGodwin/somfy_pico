@@ -57,6 +57,10 @@ bool ConfigService::OnConfigure(const CgiParams &params)
             auto oldCConfig = _config->GetWifiConfig();
             strlcpy(cfg.password, oldCConfig->password, sizeof(cfg.password));
         }
+        else
+        {
+            strlcpy(cfg.password, password.c_str(), sizeof(cfg.password));
+        }
 
         puts("Saving config\n");
         _config->SaveWifiConfig(&cfg);

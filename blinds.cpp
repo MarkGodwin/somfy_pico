@@ -202,7 +202,7 @@ bool Blinds::DoDeleteBlind(const CgiParams &params)
 
     _config->DeleteBlindConfig(id);
     SaveBlindList();
-    return false;
+    return true;
 }
 
 bool Blinds::DoBlindCommand(const CgiParams &params)

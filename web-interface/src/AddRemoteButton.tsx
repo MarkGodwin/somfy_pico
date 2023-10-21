@@ -16,18 +16,18 @@ export function AddRemoteButton(props: { onSaved: () => void } ) : JSX.Element {
     const doAdd = async () => {
         if(newRemoteName.length < 1 || newRemoteName.length > 47)
         {
-            toaster.open("Invalid name", "You need to specify a valid name for the blind to create");
+            toaster.open("Invalid name", "You need to specify a valid name for the remote to create");
             return;
         }
 
         const params = new URLSearchParams();
         params.set("name", newRemoteName);
-        let response = await fetch("/api/blinds/add.json?" + params.toString());
+        let response = await fetch("/api/remotes/add.json?" + params.toString());
 
         let body: boolean =  await response.json();
         if(!body)
         {
-            toaster.open("Unable to add blind", "For some reason, the blind could not be added.");
+            toaster.open("Unable to add remote", "For some reason, the remote could not be added.");
         }
         else
         {
@@ -42,12 +42,12 @@ return (
         <Button className="mt-4" onClick={() => setShowAdd(true)}>Add</Button>
         <Modal show={showAdd} onHide={handleAddCancel}>
             <Modal.Header closeButton>
-                <Modal.Title>Edit blind</Modal.Title>
+                <Modal.Title>Add Remote</Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 <Form>
                     <Form.Group className="mb-3">
-                        <Form.Label htmlFor="remoteName">Blind Name</Form.Label>
+                        <Form.Label htmlFor="remoteName">Remote Name</Form.Label>
                             <Form.Control
                                 type="text"
                                 aria-describedby="remoteNameHelpBlock"
