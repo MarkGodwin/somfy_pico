@@ -15,6 +15,7 @@
                },
     },
     "files.associations": {
-      "cyw43.h": "c"
+      "cyw43.h": "c",
+      "flash.h": "c"
     },
 }

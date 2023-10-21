@@ -7,12 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
-set(PICO_SDK_PATH "/home/mark/pico/pico-sdk")
+#set(PICO_SDK_PATH "./pico-sdk")
 
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+include(pico-sdk/pico_sdk_init.cmake)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
@@ -25,7 +25,14 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(somfy_remote somfy_remote.cpp radio.cpp remote.cpp)
+add_executable(somfy_remote 
+  somfy_remote.cpp
+  radio.cpp
+  remote.cpp
+  dhcpserver/dhcpserver.c
+  dnsserver/dnsserver.c
+  #fs.c
+)
 
 pico_set_program_name(somfy_remote "somfy_remote")
 pico_set_program_version(somfy_remote "0.1")
@@ -40,15 +47,19 @@ target_link_libraries(somfy_remote
 # Add the standard include files to the build
 target_include_directories(somfy_remote PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
-  ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
+  ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
+  ${CMAKE_CURRENT_LIST_DIR}/dnsserver
+  #  ${CMAKE_CURRENT_LIST_DIR}/.. 
 )
 
 # Add any user requested libraries
 target_link_libraries(somfy_remote 
         hardware_spi
         hardware_pio
-        pico_cyw43_arch_none
+        pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip_http
+        pico_flash
         )
-
+        
 pico_add_extra_outputs(somfy_remote)
 
