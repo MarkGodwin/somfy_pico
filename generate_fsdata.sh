@@ -17,7 +17,8 @@ cp -R web-interface/build ./fs
 find ./fs -name "*.map" -delete -print
 find ./fs -name "*.txt" -delete -print
 # overwrite the debug api data with the template files
-rename -f -v 's/.template$//' ./fs/**/*.template
+rename -f -v 's/.template$//' ./fs/api/*.template
+rename -f -v 's/.template$//' ./fs/api/**/*.template
 
 echo Regenerating fsdata.c
 ./makefsdata -defl:9 -svr:picow

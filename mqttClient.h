@@ -68,21 +68,31 @@ class MqttClient
 };
 
 /// @brief Helper class for managing a subscription lifetime
-class Subscription
+class MqttSubscription
 {
     public:
-        Subscription(std::shared_ptr<MqttClient> client, std::string topic, SubscribeFunc &&callback)
+        MqttSubscription(std::shared_ptr<MqttClient> client, std::string topic, SubscribeFunc &&callback)
         :   _client(client),
              _topic(std::move(topic))
         {
             _client->Subscribe(_topic.c_str(), std::forward<SubscribeFunc>(callback));
         }
 
-        ~Subscription()
+        MqttSubscription(MqttSubscription &&other)
+        :   _client(std::move(other._client)),
+            _topic(std::move(other._topic))
         {
-            _client->Unsubscribe(_topic.c_str());
         }
+
+
+        ~MqttSubscription()
+        {
+            if(_client)
+                _client->Unsubscribe(_topic.c_str());
+        }
+       
     private:
+        MqttSubscription(const MqttSubscription &) = delete;
         std::shared_ptr<MqttClient> _client;
         std::string _topic;
 };

@@ -33,13 +33,15 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
         if(blindids[a] >= _nextId)
             _nextId = blindids[a] + 1;
         auto cfg = _config->GetBlindConfig(blindids[a]);
-        _blinds.insert({blindids[a], std::make_unique<Blind>(blindids[a], cfg, _remotes->GetRemote(cfg->remoteId), _mqttClient, _webServer)});
+        _blinds.insert({blindids[a], std::make_unique<Blind>(blindids[a], cfg->blindName, cfg->currentPosition, cfg->myPosition, cfg->openTime, cfg->closeTime, _remotes->GetRemote(cfg->remoteId), _mqttClient)});
     }
 
-    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }));
-    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/update.json", [this](const CgiParams &params) { return DoUpdateBlind(params); }));
-    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/delete.json", [this](const CgiParams &params) { return DoDeleteBlind(params); }));
-    _cgiSubscriptions.push_back(CgiSubscription(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }));
+    _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/add.json", [this](const CgiParams &params) { return DoAddBlind(params); }));
+    _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/update.json", [this](const CgiParams &params) { return DoUpdateBlind(params); }));
+    _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/delete.json", [this](const CgiParams &params) { return DoDeleteBlind(params); }));
+    _webApi.push_back(CgiSubscription(_webServer, "/api/blinds/command.json", [this](const CgiParams &params) { return DoBlindCommand(params); }));
+
+    _webData.push_back(SsiSubscription(_webServer, "blinds", [this](char *buffer, int len, uint16_t tagPart, uint16_t *nextPart) { return GetBlindsResponse(buffer, len, tagPart, nextPart); }));
 }
 
 
@@ -57,27 +59,59 @@ bool Blinds::DoAddBlind(const CgiParams &params)
         return false;
     }
 
+    int openTime, closeTime;
+    if( !sscanf(openTimeParam->second.c_str(), "%d", &openTime) ||
+        !sscanf(closeTimeParam->second.c_str(), "%d", &closeTime))
+    {
+        puts("Bad open or close time parameters");
+        return false;
+    }
+
     // Create a new blind, and a new remote for the blind
     auto newRemote = _remotes->CreateRemote(nameParam->second);
     auto newId = _nextId++;
 
-    BlindConfig cfg;
-    strcpy(cfg.blindName, nameParam->second.c_str());
-    cfg.currentPosition = 90;
-    cfg.myPosition = 50;
-    cfg.remoteId = newRemote->GetRemoteId();
-    cfg.openTime = atoi(openTimeParam->second.c_str());
-    cfg.closeTime = atoi(closeTimeParam->second.c_str());
-
-    _blinds.insert({newId, std::make_unique<Blind>(newId, &cfg, newRemote, _mqttClient, _webServer)});
+    _blinds.insert({newId, std::make_unique<Blind>(newId, nameParam->second, 90, 50, openTime, closeTime, newRemote, _mqttClient)});
+    newRemote->AssociateBlind(newId);
 
     return true;
 }
 
 bool Blinds::DoUpdateBlind(const CgiParams &params)
 {
-    // Create a new blind, and a new remote for the blind
+    auto idParam = params.find("id");
+    auto nameParam = params.find("name");
+    auto openTimeParam = params.find("openTime");
+    auto closeTimeParam = params.find("closeTime");
 
+    if(idParam == params.end() ||
+       nameParam == params.end() ||
+       openTimeParam == params.end() ||
+       closeTimeParam == params.end())
+    {
+        puts("Missing arguments to AddBlind");
+        return false;
+    }
+
+    uint16_t id;
+    int openTime, closeTime;
+    if( !sscanf(idParam->second.c_str(), "%hu", &id) ||
+        !sscanf(openTimeParam->second.c_str(), "%d", &openTime) ||
+        !sscanf(closeTimeParam->second.c_str(), "%d", &closeTime))
+    {
+        puts("Bad open or close time parameters");
+        return false;
+    }
+
+    auto pos = _blinds.find(id);
+    if(pos == _blinds.end())
+    {
+        printf("No blind with id %d found\n", id);
+        return false;
+    }
+
+    puts("Updating blind....");
+    pos->second->UpdateConfig(nameParam->second, openTime, closeTime);
     return true;
 }
 
@@ -124,3 +158,40 @@ bool Blinds::DoBlindCommand(const CgiParams &params)
     return true;
 }
 
+uint16_t Blinds::GetBlindsResponse(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart)
+{
+    // This data structure is a poor choice for this API
+    auto pos = _blinds.begin();
+    for(auto a = 0; a < tagPart; a++)
+    {
+        pos++;
+    }
+
+    if(pos == _blinds.end())
+        return 0;
+
+    BufferOutput outputter(pcInsert, iInsertLen);
+    outputter.Append("{ \"id\": ");
+    outputter.Append((int)pos->first);
+    outputter.Append(", \"name\": \"");
+    outputter.Append(pos->second->GetName());
+    outputter.Append("\", \"position\": ");
+    outputter.Append(pos->second->GetIntermediatePosition());
+    outputter.Append(", \"openTime\": ");
+    outputter.Append(pos->second->GetOpenTime());
+    outputter.Append(", \"closeTime\": "); 
+    outputter.Append(pos->second->GetCloseTime());
+    outputter.Append(", \"remoteId\": ");
+    outputter.Append((int)pos->second->GetRemoteId());
+
+    pos++;
+    if(pos != _blinds.end())
+    {
+        outputter.Append(" },");
+        *nextPart = tagPart + 1;
+    }
+    else
+        outputter.Append(" }");
+    
+    return outputter.BytesWritten();
+}

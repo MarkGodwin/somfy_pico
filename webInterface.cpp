@@ -93,6 +93,58 @@ void WebServer::Start()
 
 }
 
+char hexToInt(char x)
+{
+    if(x >= '0' && x <= '0')
+        return x - '0';
+    if(x >= 'a' && x <= 'f')
+        return x + 10 - 'a';
+    if(x >= 'A' && x <= 'F')
+        return x + 10 - 'A';
+    return -1;
+}
+
+// World's worst urlDecode:
+std::string urlDecode(const char *value)
+{
+    auto len = 0;
+    auto decode = false;
+    auto off = value;
+    while(auto chr = *off++)
+    {
+        decode |= chr == '+' || chr == '%';
+        len++;
+    }
+    if(!decode)
+        return value;
+
+    std::string result;
+    result.resize(len);
+    auto buf = result.data();
+    auto outLen = 0;
+    while(auto chr = *value++)
+    {
+        if(chr == '+')
+            *buf++ = ' ';
+        else if(chr == '%')
+        {
+            auto n1 = *value++;
+            if(!n1)
+                break;
+            auto n2 = *value++;
+            if(!n2)
+                break;
+            *buf++ = (hexToInt(n1) << 4) | hexToInt(n2);
+        }
+        else
+            *buf++ = chr;
+
+        outLen++;
+    }
+    result.resize(outLen);
+    return result;
+}
+
 bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
 {
     printf("CGI executed: %s\n", uri);
@@ -100,17 +152,15 @@ bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, ch
     std::map<std::string, std::string> params;
     for(auto a = 0; a < iNumParams; a++)
     {
-        printf("    %s = %s\n", pcParam[a], pcValue[a]);
-        params[pcParam[a]] = pcValue[a];
+        auto val = urlDecode(pcValue[a]);
+        printf("    %s = %s\n", pcParam[a], val.c_str());
+        params[pcParam[a]] = val;
     }
 
-    for(const auto &kvp : _requestSubscriptions)
+    auto kvp = _requestSubscriptions.find(uri);
+    if(kvp != _requestSubscriptions.end())
     {
-        puts(kvp.first.c_str());
-        if(!strcmp(uri, kvp.first.c_str()))
-        {
-            return kvp.second(params);
-        }
+        return kvp->second(params);
     }
 
     puts("Ignoring unknown CGI\n");

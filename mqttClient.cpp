@@ -100,6 +100,7 @@ void MqttClient::Subscribe(const char *topic, SubscribeFunc &&callback)
 
 void MqttClient::Unsubscribe(const char *topic)
 {
+    printf("Unsubscribing from MQTT: %s", topic);
     _subscriptions.erase(topic);
     if(IsConnected())
     {

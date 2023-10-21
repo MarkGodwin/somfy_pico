@@ -1,9 +1,9 @@
 import { useState, useMemo, ReactNode, PropsWithChildren, MouseEventHandler } from 'react';
-import { createPortal } from 'react-dom';
 
 import { ToasterContext } from './toaster';
 import './toasterOutlet.css';
 import { title } from 'process';
+import Toast from 'react-bootstrap/Toast';
 
 let toastIndex = 0;
 
@@ -14,12 +14,12 @@ type ToastProps = PropsWithChildren<{
     close: MouseEventHandler<HTMLButtonElement>;
 }>;
 
-const Toast = (props: ToastProps) => {
+const MyToast = (props: ToastProps) => {
   setTimeout(props.close, 5000);
 
   return (
-    <div className="toast show">
-      <div className="toast-header">
+    <Toast onClick={props.close}>
+      <Toast.Header>
         <svg
             className="bd-placeholder-img rounded me-2"
             width="20"
@@ -27,15 +27,13 @@ const Toast = (props: ToastProps) => {
             xmlns="http://www.w3.org/2000/svg"
             aria-hidden="true"
             preserveAspectRatio="xMidYMid slice"
-            focusable="false"
-            >
+            focusable="false">
             <rect width="100%" height="100%" fill="#ff3a10"></rect>
-            </svg>
+        </svg>
         <strong className="me-auto">{props.title}</strong>
-        <button type="button" className="btn-close" onClick={props.close} aria-label="Close"></button>
-      </div>
-      <div className="toast-body">{props.children}</div>
-    </div>
+        </Toast.Header>
+      <Toast.Body>{props.children}</Toast.Body>
+    </Toast>
   );
 };
 
@@ -67,9 +65,9 @@ export const ToasterOutlet = (props: { children?: ReactNode }) => {
                 {props.children}
                 <div className="toast-list">
                     {toasts.map((toast) => (
-                        <Toast key={toast.id} title={toast.title} close={() => close(toast.id)}>
+                        <MyToast key={toast.id} title={toast.title} close={() => close(toast.id)}>
                         {toast.content}
-                        </Toast>
+                        </MyToast>
                     ))}
                 </div>            
             </div>

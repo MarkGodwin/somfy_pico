@@ -142,6 +142,7 @@ const uint16_t *DeviceConfig::GetIdList(uint32_t header, uint32_t *count)
     if(block == nullptr)
     {
         *count = 0;
+        return nullptr;
     }
     *count = *block;
     return (const uint16_t *)(block + 1);

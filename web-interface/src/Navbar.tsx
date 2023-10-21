@@ -1,34 +1,39 @@
 
 import logo from './logo.svg';
 import './Navbar.css';
-import { NavLink } from 'react-router-dom';
+import { Navbar, Nav, Container } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
 
 export function NavBar() {
   return (
 
-      <nav className="navbar navbar-expand-lg bg-light">
-        <div className="container">
-          <span className="navbar-brand mb-0 h1">
+      <Navbar className="navbar-expand-lg bg-light">
+        <Container>
+          <Navbar.Brand className="mb-0 h1">
             <img src={logo} alt="Somfy" height={25} className="d-inline-block align-text-bottom" />
             Blind Controller
-          </span>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarNav">
-            <ul className="navbar-nav">
-              <li className="nav-item">
-                <NavLink className="nav-link" aria-current="page" to="/">Control Blinds</NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink className="nav-link" to="/config">Configure</NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink className="nav-link" to="/setup">Network Setup</NavLink>
-              </li>
-             </ul>
-          </div>
-        </div>
-      </nav>
+          </Navbar.Brand>
+          <Navbar.Toggle aria-controls="navbarNav" />
+          <Navbar.Collapse id="navbarNav">
+            <Nav>
+              <LinkContainer to="/">
+                <Nav.Link>
+                    Home
+                </Nav.Link>
+              </LinkContainer>
+              <LinkContainer to="/control">
+                <Nav.Link>
+                  Control Blinds
+                </Nav.Link>
+              </LinkContainer>
+              <LinkContainer to="/setup">
+                <Nav.Link>
+                  Network Setup
+                </Nav.Link>
+              </LinkContainer>
+            </Nav>
+          </Navbar.Collapse>
+        </Container>
+      </Navbar>
 );
 }

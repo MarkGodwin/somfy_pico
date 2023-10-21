@@ -22,6 +22,7 @@ const int LongPress = 12;
 class Blinds;
 class RemoteConfig;
 
+
 class SomfyRemote
 {
 public:
@@ -53,3 +54,5 @@ private:
     uint16_t _rollingCode;
     std::vector<uint16_t> _associatedBlinds;
 };
+
+typedef void (SomfyRemote::*blindAssocFunc)(uint16_t);

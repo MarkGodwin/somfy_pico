@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap/dist/js/bootstrap.js';
 
 import {
   createBrowserRouter,
@@ -13,16 +12,16 @@ import {
 import './index.css';
 import {App} from './App';
 import {ErrorPage} from './ErrorPage';
+import {HomePage} from './HomePage';
 import {ControlPage} from './ControlPage';
-import {ConfigPage} from './ConfigPage';
 import {SetupPage} from './SetupPage';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/" element={<App/>}
     errorElement={<ErrorPage/>}>
-    <Route index element={<ControlPage />} />
-    <Route path="/config" element={<ConfigPage />} />
+    <Route index element={<HomePage/>} />
+    <Route path="/control" element={<ControlPage />} />
     <Route path="/setup" element={<SetupPage />} />
   </Route>
   ));

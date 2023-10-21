@@ -6,5 +6,21 @@
         "openTime": 30,
         "closeTime": 30,
         "remoteId": 5000
+    },
+    {
+        "id": 2,
+        "name": "Blind 2",
+        "position": 50,
+        "openTime": 30,
+        "closeTime": 30,
+        "remoteId": 5001
+    },
+    {
+        "id": 3,
+        "name": "Blind 3",
+        "position": 0,
+        "openTime": 30,
+        "closeTime": 30,
+        "remoteId": 5002
     }
 ]

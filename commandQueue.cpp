@@ -48,13 +48,17 @@ static RadioCommandQueue *_thequeue = nullptr;
 
 void RadioCommandQueue::Start()
 {
+
     _thequeue = this;
     multicore_launch_core1([]() {
         // Make sure the other core can fiddle with flash without us screwing everything up
         if(!flash_safe_execute_core_init())
         {
+            // Unsafe to continue this thread...
             printf("Flash init failed\n");
+            return;
         }
+
         _thequeue->Worker();
         flash_safe_execute_core_deinit();
     });
@@ -62,6 +66,18 @@ void RadioCommandQueue::Start()
 
 void RadioCommandQueue::Worker()
 {
+    _radio->Reset();
+    puts("Radio Reset complete!\n");
+    _radio->Initialize();
+    _radio->SetSymbolWidth(635);
+    _radio->SetFrequency(433.44);
+    auto fq = _radio->GetFrequency();
+    printf("Radio frequency: %.3f\n", fq);
+    auto br = _radio->GetBitRate();
+    printf("BitRate: %dbps\n", br);
+    auto ver = _radio->GetVersion();
+    printf("Radio version: 0x%02x\n", ver);
+
     while(true)
     {
         CommandEntry entry;

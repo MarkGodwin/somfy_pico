@@ -26,11 +26,18 @@ class Blinds
             return _blinds.at(blindId);
         }
 
+        bool Exists(uint16_t blindId)
+        {
+            return _blinds.count(blindId) > 0;
+        }
+
     private:
         bool DoAddBlind(const CgiParams &params);
         bool DoUpdateBlind(const CgiParams &params);
         bool DoDeleteBlind(const CgiParams &params);
         bool DoBlindCommand(const CgiParams &params);
+
+        uint16_t GetBlindsResponse(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart);
 
         uint32_t _nextId;
         std::map<uint32_t, std::unique_ptr<Blind>> _blinds;
@@ -40,6 +47,7 @@ class Blinds
         std::shared_ptr<MqttClient> _mqttClient;
         std::shared_ptr<WebServer> _webServer;
 
-        std::list<CgiSubscription> _cgiSubscriptions;
+        std::list<CgiSubscription> _webApi;
+        std::list<SsiSubscription> _webData;
 };
 

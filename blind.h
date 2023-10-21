@@ -2,7 +2,6 @@
 
 
 #include "mqttClient.h"
-#include "webInterface.h"
 #include <memory>
 
 
@@ -13,15 +12,25 @@ struct BlindConfig;
 class Blind
 {
     public:
-        Blind(uint32_t blindId,
-            const BlindConfig *config,
+        Blind(
+            uint16_t blindId,
+            std::string name,
+            int currentPosition,
+            int favouritePosition,
+            int openTime,
+            int closeTime,
             std::shared_ptr<SomfyRemote> remote,
-            std::shared_ptr<MqttClient> mqttClient,
-            std::shared_ptr<WebServer> webServer);
+            std::shared_ptr<MqttClient> mqttClient);
 
         ~Blind();
 
-        void GetConfig(BlindConfig *config);
+        // Config API
+        const std::string &GetName() { return _name; }
+        void UpdateConfig(std::string name, int openTime, int closeTime) { _name = std::move(name); _openTime = openTime; _closeTime = closeTime; }
+        int GetOpenTime() { return _openTime; }
+        int GetCloseTime() { return _closeTime; }
+        uint32_t GetRemoteId();
+        int GetFavouritePosition() { return _favouritePosition; }
 
         /// @brief Command the blind to move to a specific position, using the primary remote
         /// @param position New position for the blind
@@ -37,8 +46,8 @@ class Blind
         /// @brief Saves the current position as the My position
         void SaveMyPosition();
 
-        int GetTargetPosition(int position) { return _targetPosition; }
-        int GetIntermediatePosition(int position) { return _intermediatePosition; }
+        int GetTargetPosition() { return _targetPosition; }
+        int GetIntermediatePosition() { return _intermediatePosition; }
 
         /// @brief True, if we think the blind is moving
         bool IsInMotion() { return _motionDirection != 0; }
@@ -53,7 +62,10 @@ class Blind
         Blind(const Blind&) = delete;
 
 
-        uint32_t _blindId;
+        uint16_t _blindId;
+        std::string _name;
+        int _openTime;
+        int _closeTime;
 
         int _motionDirection;
         int _intermediatePosition; 
@@ -61,10 +73,9 @@ class Blind
         int _favouritePosition;
 
         std::shared_ptr<MqttClient> _mqttClient;
-        std::shared_ptr<WebServer> _webServer;
         std::shared_ptr<SomfyRemote> _remote;
-        Subscription _cmdSubscription;
-        Subscription _posSubscription;
+        MqttSubscription _cmdSubscription;
+        MqttSubscription _posSubscription;
 
 
 };

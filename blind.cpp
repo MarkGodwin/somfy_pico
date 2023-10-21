@@ -20,65 +20,64 @@ std::string string_format( const std::string& format, Args ... args )
 }
 
 Blind::Blind(
-    uint32_t blindId,
-    const BlindConfig *config,
+    uint16_t blindId,
+    std::string name,
+    int currentPosition,
+    int favouritePosition,
+    int openTime,
+    int closeTime,
     std::shared_ptr<SomfyRemote> remote,
-    std::shared_ptr<MqttClient> mqttClient,
-    std::shared_ptr<WebServer> webServer)
+    std::shared_ptr<MqttClient> mqttClient)
 :   _blindId(blindId),
+    _name(std::move(name)),
+    _targetPosition(currentPosition),
+    _intermediatePosition(currentPosition),
+    _openTime(openTime),
+    _closeTime(closeTime),
     _remote(remote),
     _mqttClient(mqttClient),
     _motionDirection(0),
     _cmdSubscription(mqttClient, string_format("pico_somfy/blinds/{%08x}/cmd", blindId),[this](const uint8_t *payload, uint32_t length) { OnCommand(payload, length); }),
     _posSubscription(mqttClient, string_format("pico_somfy/blinds/{%08x}/pos", blindId),[this](const uint8_t *payload, uint32_t length) { OnSetPosition(payload, length); })
 {
-    _targetPosition = config->currentPosition;
-    _intermediatePosition = _targetPosition;
 
-    printf("Blind ID %d: %s\n", _blindId, config->blindName);
+    printf("Blind ID %d: %s\n", _blindId, _name.c_str());
 }
 
 Blind::~Blind()
 {
 }
 
+uint32_t Blind::GetRemoteId()
+{
+    return _remote->GetRemoteId(); 
+}
+
 void Blind::GoToPosition(int position)
 {
-    _targetPosition = position;
     if(_intermediatePosition > _targetPosition || _targetPosition == 0)
-    {
         _remote->PressButtons(SomfyButton::Down, ShortPress);
-        _motionDirection = -1;
-        
-    }
     if(_intermediatePosition < _targetPosition || _targetPosition == 100)
-    {
         _remote->PressButtons(SomfyButton::Up, ShortPress);
-        _motionDirection = 1;
-    }
+
+    _targetPosition = position;
 }
 
 void Blind::GoUp()
 {
     _remote->PressButtons(SomfyButton::Up, ShortPress);
-    ButtonsPressed(SomfyButton::Up);
 }
 
 void Blind::GoDown()
 {
     _remote->PressButtons(SomfyButton::Down, ShortPress);
-    ButtonsPressed(SomfyButton::Down);
 }
 
 void Blind::Stop()
 {
     if(_motionDirection)
-    {
-        _remote->PressButtons(SomfyButton::Down, ShortPress);
-        ButtonsPressed(SomfyButton::My);
-    }
+        _remote->PressButtons(SomfyButton::My, ShortPress);
 }
-
 
 void Blind::GoToMyPosition()
 {
@@ -120,6 +119,8 @@ void Blind::ButtonsPressed(SomfyButton button)
         }
     }
 
+    // TODO: publish motion state and position here
+
 }
 
 void Blind::SaveMyPosition()
@@ -133,7 +134,7 @@ void Blind::SaveMyPosition()
 
 void Blind::UpdatePosition()
 {
-    // Tick
+    // Tick - update position, motion state & publish
 }
 
 void Blind::OnCommand(const uint8_t *payload, uint32_t length)

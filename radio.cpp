@@ -93,7 +93,6 @@ void RFM69Radio::SetPacketFormat(bool manchester, uint8_t payloadSize)
     packetConfig.crcAutoClearOff = 0;
     packetConfig.addressFiltering = 0;
     packetConfig.payloadLength = payloadSize == 0 ? 255 : payloadSize;
-    printf("PayloadCfg: 0x%04x\n", packetConfig.data);
     WriteRegisterWord(RADIO_RegPacketConfig, packetConfig.data);
 }
 

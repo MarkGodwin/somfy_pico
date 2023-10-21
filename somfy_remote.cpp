@@ -9,7 +9,6 @@
 #include "lwip/tcp.h"
 
 #include "radio.h"
-#include "remote.h"
 #include "remotes.h"
 #include "blinds.h"
 #include "wifiConnection.h"
@@ -112,11 +111,14 @@ int main()
         });
     }
 
+    puts("Starting the Radio\n");
     auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
+
+    // We'll run radio commands from the core 1 thread
     auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
 
     auto blinds = std::make_shared<Blinds>(config, mqttClient, webServer);
-    auto remotes = std::make_shared<SomfyRemotes>(config, blinds, commandQueue);
+    auto remotes = std::make_shared<SomfyRemotes>(config, blinds, webServer, commandQueue);
     blinds->Initialize(remotes);
 
     auto onOff = false;
@@ -131,6 +133,7 @@ int main()
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
         sleep_ms(1000);
 
+        // Show Mark we aren't dead
         gpio_put(PIN_LED, onOff);
         onOff = !onOff;
     }
@@ -163,20 +166,6 @@ int main()
     sleep_ms(6000);
     puts("Starting...\n");
 
-    radio.Reset();
-    puts("Reset complete!\n");
-    radio.Initialize();
-
-    radio.SetSymbolWidth(635);
-    radio.SetFrequency(433.44);
-
-    auto fq = radio.GetFrequency();
-    printf("Radio frequency: %.3f\n", fq);
-    auto br = radio.GetBitRate();
-    printf("BitRate: %dbps\n", br);
-  
-    auto ver = radio.GetVersion();
-    printf("Radio version: 0x%02x\n", ver);
 
     SomfyRemote remote(&radio, 0x27962a, 2612);
 

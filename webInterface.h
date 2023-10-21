@@ -5,6 +5,7 @@
 #include <memory>
 #include <functional>
 #include <map>
+#include <string.h>
 
 class DeviceConfig;
 class ServiceControl;
@@ -13,7 +14,7 @@ class IWifiConnection;
 typedef std::map<std::string, std::string> CgiParams;
 typedef std::function<bool(const CgiParams &)> CgiSubscribeFunc;
 
-typedef std::function<uint16_t(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart)> SsiSubscribeFunc;
+typedef std::function<uint16_t(char *buffer, int len, uint16_t tagPart, uint16_t *nextPart)> SsiSubscribeFunc;
 
 
 class WebServer
@@ -101,4 +102,65 @@ class SsiSubscription
         std::string _tag;
 
 
+};
+
+
+/// @brief Helper class for witing SSI tag buffers
+class BufferOutput
+{
+    public:
+        BufferOutput(char *buffer, int length)
+        : _buffer(buffer), _length(length), _written(0)
+        {
+        }
+
+        uint16_t BytesWritten() { return _written; }
+
+        void Append(const char *str)
+        {
+            auto len = strlen(str);
+            if(len > _length)
+                return;
+            memcpy(_buffer, str, len);
+            _buffer += len;
+            _length -= len;
+            _written += len;
+        }
+
+        void Append(const std::string &str)
+        {
+            auto len = str.length();
+            if(len > _length)
+                return;
+            memcpy(_buffer, str.data(), str.length());
+            _buffer += len;
+            _length -= len;
+            _written += len;
+
+        }
+
+        void Append(int value)
+        {
+            if(16 > _length)
+                return;
+            auto len = snprintf(_buffer, 16, "%d", value);
+            _buffer += len;
+            _length -= len;
+            _written += len;
+        }
+
+        void Append(char c)
+        {
+            if(!_length)
+                return;
+            *_buffer++ = c;
+            _length --;
+            _written ++;
+        }
+
+
+    private:
+        char *_buffer;
+        int _length;
+        uint16_t _written;
 };
