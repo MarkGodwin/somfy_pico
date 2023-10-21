@@ -54,13 +54,13 @@
 #define PBUF_DEBUG                  LWIP_DBG_OFF
 #define API_LIB_DEBUG               LWIP_DBG_OFF
 #define API_MSG_DEBUG               LWIP_DBG_OFF
-#define SOCKETS_DEBUG               LWIP_DBG_ON
+#define SOCKETS_DEBUG               LWIP_DBG_OFF
 #define ICMP_DEBUG                  LWIP_DBG_OFF
 #define INET_DEBUG                  LWIP_DBG_OFF
 #define IP_DEBUG                    LWIP_DBG_OFF
 #define IP_REASS_DEBUG              LWIP_DBG_OFF
 #define RAW_DEBUG                   LWIP_DBG_OFF
-#define MEM_DEBUG                   LWIP_DBG_ON
+#define MEM_DEBUG                   LWIP_DBG_OFF
 #define MEMP_DEBUG                  LWIP_DBG_OFF
 #define SYS_DEBUG                   LWIP_DBG_OFF
 #define TCP_DEBUG                   LWIP_DBG_OFF
@@ -79,7 +79,7 @@
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
 // Allow <!--#xxx--> substitution
-#define HTTPD_DEBUG LWIP_DBG_ON
+#define HTTPD_DEBUG LWIP_DBG_OFF
 #define LWIP_HTTPD_SSI                  1
 // Just give us all of the tags as raw strings
 #define LWIP_HTTPD_SSI_RAW              1
@@ -91,9 +91,9 @@
 #define LWIP_HTTPD_CGI_SSI              1
 #define LWIP_HTTPD_FILE_STATE           1
 
-#define MQTT_DEBUG LWIP_DBG_ON
+#define MQTT_DEBUG LWIP_DBG_OFF
 #define MQTT_OUTPUT_RINGBUF_SIZE        2048
 
 #define HTTPD_ADDITIONAL_CONTENT_TYPES { "svg", HTTP_HDR_SVG }
  
-#define HTTPD_FSDATA_FILE "../../../../fsdata.c"
+#define HTTPD_FSDATA_FILE "../../../../firmware/fsdata.c"

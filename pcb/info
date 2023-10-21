@@ -1,0 +1,271 @@
+{
+  "uuid": "b9a8910c1077c4c2e6d8bb10c20128e3",
+  "path": "Offline/Pico-Somfy",
+  "name": "Pico-Somfy",
+  "content": "",
+  "created_at": "2023-09-30 12:10:09",
+  "updated_at": "2023-10-01 01:57:47",
+  "stick": "",
+  "documents": [
+    {
+      "uuid": "ebfcaf4df40f56415331d8215d71c8df",
+      "title": "Sheet_1",
+      "description": "",
+      "docType": "1",
+      "master": "",
+      "thumb": "/images/thumb-default.png",
+      "components": {
+        "923ac6d65460475c84b7be6679e45c6c": 1,
+        "9140da51727647289e3243e578519713": 1,
+        "0da51051746c47aab0cd0653ef7a47e3": 1,
+        "43e735271203463daf93f9efecce1a98": 1,
+        "4208e5444329462b8a9428da7baa098a": 2,
+        "6d2e635950774bc6aba751a37632b420": 1,
+        "ad26831304984badb51465dad0421f70": 2,
+        "a155ce5bdc41486aa823977668ff5c34": 1,
+        "c9db438d053142a19fe44b52c217a3ff": 1,
+        "17eb339750ed2e3756214c176201643d": 1,
+        "89da25ccbb1443e9887a94d6a2eff528": 1
+      },
+      "BOM": [
+        [
+          "Value",
+          "Quantity",
+          "Package",
+          "Components",
+          "CustomPara"
+        ],
+        [
+          "10uF",
+          1,
+          "C1206",
+          "C1",
+          {
+            "Contributor": "lcsc",
+            "Supplier": "LCSC",
+            "Supplier Part": "C2443257",
+            "Manufacturer": "Walsin(华新科)",
+            "Manufacturer Part": "1206B106K250CT",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C2443257&%26type=1&ref=editor",
+            "spiceSymbolName": "1206B106K250CT",
+            "puuid": "7bdec8012728462a85919a4d0d033579",
+            "uuid": "a155ce5bdc41486aa823977668ff5c34"
+          }
+        ],
+        [
+          "Header-Male-2.54_1x6",
+          1,
+          "HDR-TH_6P-P2.54-V-M-1",
+          "H1",
+          {
+            "Supplier": "LCSC",
+            "Manufacturer": "BOOMELE(博穆精密)",
+            "Manufacturer Part": "2.54-1x6P直针",
+            "Supplier Part": "C37208",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C37208&%26type=1&ref=editor",
+            "spiceSymbolName": "Header-Male-2.54_1x6",
+            "puuid": "fd9fc9865419407ab6a588b47dec0227",
+            "uuid": "17eb339750ed2e3756214c176201643d"
+          }
+        ],
+        [
+          "LTST-C150TBKT",
+          1,
+          "LED1206-RD_BLUE",
+          "LED_B",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Manufacturer": "LITEON(光宝)",
+            "Manufacturer Part": "LTST-C150TBKT",
+            "Supplier Part": "C125088",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C125088&%26type=1&ref=editor",
+            "spiceSymbolName": "LTST-C150TBKT",
+            "puuid": "909048d29e0b46be975dfa027a64e394",
+            "uuid": "43e735271203463daf93f9efecce1a98"
+          }
+        ],
+        [
+          "LTST-C150KGKT",
+          1,
+          "LED1206-RD",
+          "LED_G",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Manufacturer": "LITEON(光宝)",
+            "Manufacturer Part": "LTST-C150KGKT",
+            "Supplier Part": "C125085",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C125085&%26type=1&ref=editor",
+            "spiceSymbolName": "LTST-C150KGKT",
+            "puuid": "3f21a2531f5a413d88c730f61daca683",
+            "uuid": "0da51051746c47aab0cd0653ef7a47e3"
+          }
+        ],
+        [
+          "LTST-C150KRKT",
+          1,
+          "LED1206-RD",
+          "LED_R",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Manufacturer": "LITEON(光宝)",
+            "Manufacturer Part": "LTST-C150KRKT",
+            "Supplier Part": "C125086",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C125086&%26type=1&ref=editor",
+            "spiceSymbolName": "LTST-C150KRKT",
+            "puuid": "3f21a2531f5a413d88c730f61daca683",
+            "uuid": "9140da51727647289e3243e578519713"
+          }
+        ],
+        [
+          "PICO W",
+          1,
+          "LCC-40_L51.0-W21.0-P2.54-BL_RP2040-BASED",
+          "PICO",
+          {
+            "Supplier": "LCSC",
+            "Supplier Part": "C7203003",
+            "Manufacturer": "Raspberry Pi(树莓派)",
+            "Manufacturer Part": "PICO W",
+            "Contributor": "lcsc",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C7203003&%26type=1&ref=editor",
+            "spiceSymbolName": "PICO W",
+            "puuid": "3ec76d8d140c42d19e527cd96a6f473a",
+            "uuid": "89da25ccbb1443e9887a94d6a2eff528"
+          }
+        ],
+        [
+          "120Ω",
+          2,
+          "R1206",
+          "R1,R2",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Supplier Part": "C176250",
+            "Manufacturer": "EVER OHMS(天二科技)",
+            "Manufacturer Part": "QR1206J120RP05Z",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C176250&%26type=1&ref=editor",
+            "spiceSymbolName": "QR1206J120RP05",
+            "puuid": "8e9b1be4bcb6420dbd1d09bf04b02792",
+            "uuid": "4208e5444329462b8a9428da7baa098a"
+          }
+        ],
+        [
+          "51Ω",
+          1,
+          "R1206",
+          "R3",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Supplier Part": "C245567",
+            "Manufacturer": "EVER OHMS(天二科技)",
+            "Manufacturer Part": "CR1206F51R0P05Z",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C245567&%26type=1&ref=editor",
+            "spiceSymbolName": "CR1206F51R0P05Z",
+            "puuid": "8e9b1be4bcb6420dbd1d09bf04b02792",
+            "uuid": "6d2e635950774bc6aba751a37632b420"
+          }
+        ],
+        [
+          "DL-RFM69HC-433M",
+          1,
+          "WIFIM-SMD_16P-L16.0-W16.0-P2.00",
+          "RADIO",
+          {
+            "Contributor": "LCSC",
+            "Supplier": "LCSC",
+            "Supplier Part": "C2844476",
+            "Manufacturer": "DreamLNK(骏晔科技)",
+            "Manufacturer Part": "DL-RFM69HC-433M",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C2844476&%26type=1&ref=editor",
+            "spiceSymbolName": "DL-RFM69HC-433M",
+            "puuid": "e153a44819af467193aacc3790107f1a",
+            "uuid": "c9db438d053142a19fe44b52c217a3ff"
+          }
+        ],
+        [
+          "TS6645TP 250GF 013",
+          2,
+          "SW-SMD_4P-L6.2-W6.0-P4.50-LS8.5",
+          "RESET,WIFI",
+          {
+            "Contributor": "lcsc",
+            "Supplier": "LCSC",
+            "Supplier Part": "C5156587",
+            "Manufacturer": "SHOU HAN(首韩)",
+            "Manufacturer Part": "TS6645TP 250gf 013",
+            "JLCPCB Part Class": "Extended Part",
+            "link": "https://lcsc.com/eda_search?q=C5156587&%26type=1&ref=editor",
+            "spiceSymbolName": "TS6645TP 250GF 013",
+            "puuid": "bb1bba8037224b6d9b1e800706cdca0e",
+            "uuid": "ad26831304984badb51465dad0421f70"
+          }
+        ],
+        [
+          "",
+          1,
+          "SMA_EDGELAUNCH_UFL",
+          "U3",
+          {
+            "description": "SMA Connector",
+            "Contributor": "Adafruit",
+            "spiceSymbolName": "SMACONNECTOR_EDGE_UFL",
+            "Manufacturer Part": "",
+            "puuid": "04da586678d04a489aa7c3aad3424681",
+            "uuid": "923ac6d65460475c84b7be6679e45c6c"
+          }
+        ]
+      ],
+      "updateTime": 1696119683,
+      "createTime": 1696072210,
+      "histories": [],
+      "created_at": "2023-09-30 12:10:10",
+      "updated_at": "2023-10-01 01:21:23"
+    },
+    {
+      "uuid": "822471bbba366018fcdd40676148dc0b",
+      "puuid": "b9a8910c1077c4c2e6d8bb10c20128e3",
+      "title": "PCB_Pico-Somfy",
+      "filename": "PCB_Pico-Somfy.json",
+      "description": "",
+      "docType": "3",
+      "master": "",
+      "thumb": "/images/thumb-default.png",
+      "components": {
+        "fd9fc9865419407ab6a588b47dec0227": 1,
+        "e153a44819af467193aacc3790107f1a": 1,
+        "8e9b1be4bcb6420dbd1d09bf04b02792": 3,
+        "04da586678d04a489aa7c3aad3424681": 1,
+        "7bdec8012728462a85919a4d0d033579": 1,
+        "bb1bba8037224b6d9b1e800706cdca0e": 2,
+        "909048d29e0b46be975dfa027a64e394": 1,
+        "3f21a2531f5a413d88c730f61daca683": 2,
+        "3ec76d8d140c42d19e527cd96a6f473a": 1
+      },
+      "BOM": [],
+      "updateTime": 1696121867,
+      "createTime": 1696098754,
+      "histories": [],
+      "created_at": "2023-09-30 19:32:34",
+      "updated_at": "2023-10-01 01:57:47"
+    }
+  ],
+  "sort": [],
+  "title": "Pico-Somfy",
+  "foldername": "Pico-Somfy",
+  "schfilename": "Pico-Somfy.json",
+  "schfilemtime": 1696119683382
+}
