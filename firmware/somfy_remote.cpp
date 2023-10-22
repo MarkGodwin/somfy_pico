@@ -20,6 +20,7 @@
 #include "deviceConfig.h"
 #include "serviceStatus.h"
 #include "serviceControl.h"
+#include "statusLed.h"
 #include "commandQueue.h"
 
 // SPI Defines
@@ -61,18 +62,23 @@ void runSetupMode(
     std::shared_ptr<WebServer> webServer,
     std::shared_ptr<ServiceControl> service);
 
-bool checkButtonHeld(int inputPin, int outputPin);
+bool checkButtonHeld(int inputPin, StatusLed &led);
+
+StatusLed redLed(PIN_LED_R);
+StatusLed greenLed(PIN_LED_G);
+StatusLed blueLed(PIN_LED_B);
+
 
 int main()
 {
     stdio_init_all();
 
-    gpio_init(PIN_LED_R);
-    gpio_set_dir(PIN_LED_R, GPIO_OUT);
-    gpio_init(PIN_LED_G);
-    gpio_set_dir(PIN_LED_G, GPIO_OUT);
-    gpio_init(PIN_LED_B);
-    gpio_set_dir(PIN_LED_B, GPIO_OUT);
+    //gpio_init(PIN_LED_R);
+    //gpio_set_dir(PIN_LED_R, GPIO_OUT);
+    //gpio_init(PIN_LED_G);
+    //gpio_set_dir(PIN_LED_G, GPIO_OUT);
+    //gpio_init(PIN_LED_B);
+    //gpio_set_dir(PIN_LED_B, GPIO_OUT);
 
     gpio_init(PIN_RESET);
     gpio_set_dir(PIN_RESET, GPIO_IN);
@@ -87,12 +93,32 @@ int main()
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
 
-    sleep_ms(8000);
+
+    for(auto a = 0; a < 512; a+=2)
+    {
+        redLed.SetLevel(a);
+        sleep_ms(10);
+    }
+    for(auto a = 0; a < 512; a+=2)
+    {
+        greenLed.SetLevel(a);
+        sleep_ms(10);
+    }
+    for(auto a = 0; a < 512; a+=2)
+    {
+        blueLed.SetLevel(a);
+        sleep_ms(10);
+    }
+    redLed.SetLevel(0);
+    greenLed.SetLevel(0);
+    blueLed.SetLevel(0);
 
    
     if (cyw43_arch_init()) {
         printf("Wi-Fi init failed");
-        gpio_put(PIN_LED_R, true);
+        redLed.SetLevel(1024);
+        greenLed.SetLevel(0);
+        blueLed.SetLevel(0);
         return -1;
     }
 
@@ -100,7 +126,7 @@ int main()
     auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
 
     // We'll run radio commands from the core 1 thread
-    auto commandQueue = std::make_shared<RadioCommandQueue>(radio);
+    auto commandQueue = std::make_shared<RadioCommandQueue>(radio, &blueLed);
     puts("Starting worker thread...\n");
     commandQueue->Start();
 
@@ -112,8 +138,9 @@ int main()
     auto wifiConfig = checkConfig(config);
     if(wifiConfig == nullptr)
     {
-        gpio_put(PIN_LED_R, true);
-        gpio_put(PIN_LED_B, true);
+        redLed.SetLevel(1024);
+        greenLed.SetLevel(0);
+        blueLed.SetLevel(1024);
         return -1;
     }
 
@@ -123,7 +150,7 @@ int main()
 
     auto service = std::make_shared<ServiceControl>();
 
-    if(checkButtonHeld(PIN_WIFI, PIN_LED_G))
+    if(checkButtonHeld(PIN_WIFI, greenLed))
     {
         puts("Starting in WIFI Setup mode, as button WIFI button is pressed");
         apMode = true;
@@ -168,16 +195,15 @@ int main()
 
 }
 
-bool checkButtonHeld(int inputPin, int outputPin)
+bool checkButtonHeld(int inputPin, StatusLed &led)
 {
     int a = 0;
-    bool flash = false;
     for(a = 0; !gpio_get(inputPin) && a < 100; a++)
     {
-        gpio_put(outputPin, a & 1);
+        led.SetLevel((a * 128) & 1023);
         sleep_ms(50);
     }
-    gpio_put(outputPin, false);
+    led.SetLevel(0);
     return a == 100;
 }
 
@@ -189,7 +215,7 @@ const WifiConfig *checkConfig(
         puts("WiFi Config not found.\n");
     else
     {
-        needReset = checkButtonHeld(PIN_RESET, PIN_LED_R);
+        needReset = checkButtonHeld(PIN_RESET, redLed);
     }
 
     if(needReset)
@@ -256,7 +282,7 @@ void runServiceMode(
     while(!service->IsStopRequested()) {
 
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
-        sleep_ms(250);
+        sleep_ms(500);
 
         // Lazy man's notification of MQTT reconnection outside of an IRQ callback
         if(!mqttConnected)
@@ -267,16 +293,17 @@ void runServiceMode(
                 republishTimer.ResetTimer(250);
             }
         }
-        else if(mqttConnected)
+        else if(!mqttClient->IsConnected())
         {
             republishTimer.ResetTimer(0);
             mqttConnected = false;
         }
 
         // Show Mark we aren't dead
-        gpio_put(PIN_LED_R, onOff & 0x01);
-        gpio_put(PIN_LED_G, onOff & 0x02);
-        gpio_put(PIN_LED_B, onOff & 0x04);
+        redLed.SetLevel( wifiConnection->IsConnected() ?
+            ((onOff & 0x01) ? 1024 : 512) : 0);
+        greenLed.SetLevel( mqttConnected ?
+            ((onOff & 0x04) ? 512 : 256) : 0);
         if(onOff == 0)
             onOff = 0x04;
         else
@@ -328,7 +355,7 @@ void runSetupMode(
         sleep_ms(1000);
 
         // Show Mark we aren't dead
-        gpio_put(PIN_LED_G, onOff);
+        greenLed.SetLevel(onOff ? 1024 : 512);
         onOff = !onOff;
 
         if(!gpio_get(PIN_RESET))

@@ -4,6 +4,7 @@
 #include <string.h>
 #include "commandQueue.h"
 #include "radio.h"
+#include "statusLed.h"
 
 struct CommandEntry
 {
@@ -14,8 +15,9 @@ struct CommandEntry
     SomfyButton button;
 };
 
-RadioCommandQueue::RadioCommandQueue(std::shared_ptr<RFM69Radio> radio)
-:   _radio(std::move(radio))
+RadioCommandQueue::RadioCommandQueue(std::shared_ptr<RFM69Radio> radio, StatusLed *led)
+:   _radio(std::move(radio)),
+    _led(led)
 {
     queue_init(&_queue, sizeof(CommandEntry), 16);
 }
@@ -72,6 +74,7 @@ void RadioCommandQueue::Start()
 
 void RadioCommandQueue::Worker()
 {
+    _led->SetLevel(512);
     _radio->Reset();
     puts("Radio Reset complete!\n");
     _radio->Initialize();
@@ -83,6 +86,7 @@ void RadioCommandQueue::Worker()
     printf("BitRate: %dbps\n", br);
     auto ver = _radio->GetVersion();
     printf("Radio version: 0x%02x\n", ver);
+    _led->SetLevel(0);
 
     while(true)
     {
@@ -101,6 +105,8 @@ void RadioCommandQueue::Worker()
 
 void RadioCommandQueue::ExecuteCommand(uint32_t remoteId, uint16_t rollingCode, SomfyButton button, uint16_t repeat)
 {
+    _led->SetLevel(1024);
+
     _radio->SetSyncBytes(NULL, 0);
     _radio->SetPacketFormat(false, 2);
     auto now = get_absolute_time();
@@ -110,6 +116,7 @@ void RadioCommandQueue::ExecuteCommand(uint32_t remoteId, uint16_t rollingCode, 
     uint8_t fog[16];
     ::memset(fog, 0xFF, 16);
     _radio->TransmitPacket(fog, 16);
+    _led->SetLevel(128);
 
     uint8_t payload[16] = {
         0xA7,                       // "Key". Fixed...
@@ -139,15 +146,20 @@ void RadioCommandQueue::ExecuteCommand(uint32_t remoteId, uint16_t rollingCode, 
     auto packetStartTime = delayed_by_us(now, 29000); 
     while(absolute_time_diff_us(get_absolute_time(), packetStartTime) > 0);
 
+    _led->SetLevel(1024);
     _radio->TransmitPacket(payload, sizeof(payload));
     _radio->SetSyncBytes(syncBytes, 8);
     packetStartTime = delayed_by_us(packetStartTime, 115000);
+    _led->SetLevel(256);
 
     for(auto a = 0; a < repeat; a++)
     {
         while(absolute_time_diff_us(get_absolute_time(), packetStartTime) > 0);
 
+        _led->SetLevel(1024);
         _radio->TransmitPacket(payload, sizeof(payload));
+        _led->SetLevel(256);
         packetStartTime = delayed_by_us(packetStartTime, 139000);
     }
+    _led->SetLevel(0);
 }

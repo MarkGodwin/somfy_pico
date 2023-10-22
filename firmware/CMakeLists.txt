@@ -42,19 +42,24 @@ add_executable(somfy_remote
   deviceConfig.cpp
   serviceStatus.cpp
   mqttClient.cpp
+  statusLed.cpp
   dhcpserver/dhcpserver.c
   dnsserver/dnsserver.c
 )
 
+pico_generate_pio_header(somfy_remote ${CMAKE_CURRENT_LIST_DIR}/pwm.pio)
+pico_generate_pio_header(somfy_remote ${CMAKE_CURRENT_LIST_DIR}/pulsefade.pio)
+
 pico_set_program_name(somfy_remote "somfy_remote")
-pico_set_program_version(somfy_remote "0.1")
+pico_set_program_version(somfy_remote "0.2")
 
 pico_enable_stdio_uart(somfy_remote 0)
 pico_enable_stdio_usb(somfy_remote 1)
 
 # Add the standard library to the build
-target_link_libraries(somfy_remote
-        pico_stdlib)
+target_link_libraries(
+  somfy_remote
+  pico_stdlib)
 
 # Add the standard include files to the build
 target_include_directories(somfy_remote PRIVATE

@@ -1,0 +1,40 @@
+; Side-set pin 0 is used for PWM output
+
+.program pulsefade
+.side_set 1 opt
+
+    pull block    side 0    ; Blocking Pull from FIFO to OSR to start pulse. Value determines fade speed (high = slow)
+reset:
+    set y, 31               ; Brightness level (31 = max)
+fadeloop:
+    mov x, osr              ; Reset counter for pwm cycles
+delayloop:
+    mov isr, x              ; Save the current pwm cycle counter
+    set x, 31
+pwmloop:
+    jmp x!=y skip       [7] ; Kep pin low until x == y
+    nop            side 1   ; Turn on the LED for the remainder of the cycle
+skip:
+    jmp x-- pwmloop     [7] ; Loop until x hits 0. That is one PWM cycle
+    mov x, isr     side 0   ; Load pwm cycles we have remaining at this level
+    jmp x-- delayloop       ; Loop while we have cycles left to do
+;    mov isr, osr            ; Save the loop delay
+;    pull noblock            ; Try and copy a new loop delay in, or zero from x
+;    mov x, osr              ; Copy the new loop delay back into x
+;    jmp !x noreset          ; if x is zero, then the loop pulse has not been reset
+;    jmp reset               ; Stat a new pulse
+;noreset:
+;    mov osr, isr            ; Restore the saved loop delay
+    jmp y-- fadeloop        ; Dim one more level, and start again
+
+
+
+% c-sdk {
+static inline void pulsefade_program_init(PIO pio, uint sm, uint offset, uint pin) {
+   pio_gpio_init(pio, pin);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+   pio_sm_config c = pwm_program_get_default_config(offset);
+   sm_config_set_sideset_pins(&c, pin);
+   pio_sm_init(pio, sm, offset, &c);
+}
+%}
