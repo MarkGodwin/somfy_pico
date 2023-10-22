@@ -1,9 +1,10 @@
 # What's this?
 
-I found a way to get the RFM69HCW "packet mode" to produce packets that were compatible with the Somfy RTS protocol. This is the
-result of that experiment getting way out of hand:
+I found a way to get the RFM69HCW "packet mode" to produce packets that were compatible with the Somfy RTS protocol. This is the result of that experiment getting way out of hand:
 
-A DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It can be put together using a cheap Raspberry PI Pico + RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a PCB nowadays too.
+![image](./images/board.jpg)
+
+A DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It can be put together using a cheap Raspberry PI Pico + RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a prototype PCB now.
 
 The (my first) EasyEDA PCB layout is provided in the pcb folder. You can get 5 boards manufactured by JLC PCB about $5, delivered!
 
@@ -15,6 +16,21 @@ Additional Remotes can be created, and bound to several blinds, to allow group c
 These are exposed to home assistant as buttons, not covers. Operating a remote will update the position of the associated covers.
 
 With JLC PCB, total cost to manufacture the PCB and buy the parts is about £20.
+
+## Parts
+
+Required:
+* [Pi Pico](https://www.mouser.co.uk/ProductDetail/358-SC0918) - £4.80
+* [RFM69HCW 433Mhz](https://www.mouser.co.uk/ProductDetail/474-COM-13910) - £4.99
+* [Ceramic Capacitor](https://www.mouser.co.uk/ProductDetail/187-CL31A106KAHNNNE) - £0.06 (or you can buy the Adafruit breadboard module which includes the capacitor on-board)
+
+Optional:
+* Status LEDs
+  * [Red](https://www.mouser.co.uk/ProductDetail/645-599-0220-007F) - £0.18 + [Resistor](https://www.mouser.co.uk/ProductDetail/71-CRCW1206220RFKEB) - £0.03
+  * [Green](https://www.mouser.co.uk/ProductDetail/645-599-0281-007F) - £0.28 + [Resistor](https://www.mouser.co.uk/ProductDetail/71-CRCW120620R0FKEAC) - £0.03
+  * [Blue](https://www.mouser.co.uk/ProductDetail/645-599-0291-007F) - £0.21 + [Resistor](https://www.mouser.co.uk/ProductDetail/71-CRCW120620R0FKEAC) - £0.03
+* Tactile Switches x 2 - I bought ones with the wrong pins cross-connected. Oh well.
+
 
 ## Building the Firmware
 
@@ -46,12 +62,16 @@ lights steadily.
 Figure out what IP address your Pico Somfy has been assigned. You can get this from your router.
 Go to the web interface at http://<your-pico-ip-here> to configure your Pico Somfy, and to connect to MQTT.
 
-You can then go to the setup page to add your MQTT configuration settings. This is required for Home Assistant integration.
+You can then go to the setup page to add your MQTT configuration settings. This is required for Home Assistant integration. If MQTT is connected, you will see a pulsing green status light.
 
 Blinds can be added from the Control Blinds page. I reccomend you add a blind for each blind you want to control first
 and then add additional remotes to group them together as required.
 
-## Somfy Commands
+The Blind control page and interface is pretty rough around the edges, and not designed to be used for any
+more than setting up the blinds and testing the functions. Use Home Assistant or the MQTT/HTTP API for control
+and automation.
+
+## Somfy Commands - For reference
 
 To add a remote to a brand new blind (or after a factory reset), long press the up-down buttons.
 This then enters the blind setup procedure where you can use various button combinations to set
