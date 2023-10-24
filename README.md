@@ -1,14 +1,15 @@
-# What's this?
+# Pico Somfy - What is that?
 
-I found a way to get the RFM69HCW "packet mode" to produce packets that were compatible with the Somfy RTS protocol. This is the result of that experiment getting way out of hand:
+I found a way to get the RFM69HCW "packet mode" to produce packets that were compatible with the Somfy RTS protocol
+This is the result of that experiment getting way out of hand:
 
 ![image](./images/board.jpg)
 
-A DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It can be put together using a cheap Raspberry PI Pico + RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a prototype PCB now.
+Pico Somfy in a DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It can be put together using a cheap Raspberry PI Pico W and an RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a prototype PCB now too.
 
 The (my first) EasyEDA PCB layout is provided in the pcb folder. You can get 5 boards manufactured by JLC PCB about $5, delivered!
 
-The Pi Pico runs a small React web interface that lets you configure blinds and any additional remotes.
+The Pi Pico W runs a small React web interface that lets you configure blinds and any additional remotes.
 Blinds are exposed to Home Assistant through MQTT discovery as Covers. The position of the blinds are estimated
 based on open/close timings.
 
@@ -20,7 +21,7 @@ With JLC PCB, total cost to manufacture the PCB and buy the parts is about £20.
 ## Parts
 
 Required:
-* [Pi Pico](https://www.mouser.co.uk/ProductDetail/358-SC0918) - £4.80
+* [Pi Pico W](https://www.mouser.co.uk/ProductDetail/358-SC0918) - £4.80
 * [RFM69HCW 433Mhz](https://www.mouser.co.uk/ProductDetail/474-COM-13910) - £4.99
 * [Ceramic Capacitor](https://www.mouser.co.uk/ProductDetail/187-CL31A106KAHNNNE) - £0.06 (or you can buy the Adafruit breadboard module which includes the capacitor on-board)
 
@@ -30,6 +31,8 @@ Optional:
   * [Green](https://www.mouser.co.uk/ProductDetail/645-599-0281-007F) - £0.28 + [Resistor](https://www.mouser.co.uk/ProductDetail/71-CRCW120620R0FKEAC) - £0.03
   * [Blue](https://www.mouser.co.uk/ProductDetail/645-599-0291-007F) - £0.21 + [Resistor](https://www.mouser.co.uk/ProductDetail/71-CRCW120620R0FKEAC) - £0.03
 * Tactile Switches x 2 - I bought ones with the wrong pins cross-connected. Oh well.
+* There is a position for an edge-mount antenna connector. I couldn't find a cheap option to use, but a better
+  antenna really isn't needed anyway. Any short bit of wire would probably do.
 
 
 ## Building the Firmware
@@ -40,7 +43,7 @@ Optional:
 
 ## Installing the Firmware
 
-Hold down BootSel while plugging in the Pi Pico.
+Hold down BootSel while plugging in the Pi Pico W.
 Copy the `somfy_remote.uf2` file from the `build/` directory to the Pico drive that appears.
 If you need to update the firmware, you can re-enter firmware mode via the web interface too.
 
@@ -85,11 +88,23 @@ true of some blinds, but not mine.
 Adding additional remotes has a built-in bind/unbind feature in the web interface. Choose which
 of your existing blinds you want the remote to control.
 
+## Enclosure
+
+I designed a simple 6cm x 6cm x 1.5cm square case to hold the circuit board and expose the buttons and status LEDs.
+
+![Case](images/case.jpg)![Animation](images/case.gif)
+
+The Fusion 360 and STL files ca be found in the `case/` directory. Print the lid and buttons face-down.
+No Supports are needed. I changed filament half way through printing the lid to make the recessed logo
+stand out.
+
 ## Credits
 
-This relies heavily on the Somfy RTS protocol decoding which was done by [PushStack](https://pushstack.wordpress.com/somfy-rts-protocol/).
+This project relied heavily on the Somfy RTS protocol decoding which was done by [PushStack](https://pushstack.wordpress.com/somfy-rts-protocol/).
+
 The original idea came from the Pi-Somfy project from [Nickduino](https://github.com/Nickduino/Pi-Somfy). This fantastic project is only let down by the unreliable radio module whose radio frequency would seemingly change with the weather.
-I started trying out the RFM69 module instead, but ended up trying to control it from a £6 Pico W.
+I started trying out the RFM69 module instead, but ended up trying to control it from a £6 Pico W for what was
+supposed to be "fun".
 
 ## License
 

@@ -86,9 +86,7 @@ uint32_t WifiConnection::WifiWatchdog()
     }
     else if(state == CYW43_LINK_UP)
     {
-        // Restart timer
         printf("Woof! WiFi looks good\n", state);
-      
         return 60000;
     }
     else
