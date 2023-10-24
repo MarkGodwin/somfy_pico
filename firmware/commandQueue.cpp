@@ -52,7 +52,6 @@ void RadioCommandQueue::Shutdown()
     {
         sleep_ms(100);
     } 
-    sleep_ms(100);
 }
 
 // HACK. But there can be only 1 anyway
@@ -72,7 +71,14 @@ void RadioCommandQueue::Start()
         }
 
         _thequeue->Worker();
-        flash_safe_execute_core_deinit();
+
+        // Don't actually end the command thread, as we want to write to flash
+        // and if we stop this thread, the flash write may fail because it can't
+        // synchronise
+        while(true)
+            sleep_ms(1000);
+
+        //flash_safe_execute_core_deinit();
     });
 }
 
