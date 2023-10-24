@@ -1,3 +1,8 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+//
+// Main entry point!
+
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/pio.h"
@@ -25,7 +30,7 @@
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
-// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
+// Pins can be changed to some extent, see the GPIO function select table in the datasheet for information on GPIO assignments
 #define SPI_PORT spi_default
 #define PIN_MISO 4
 #define PIN_SCK  2
@@ -41,45 +46,36 @@
 #define PIN_LED_G 12
 #define PIN_LED_B 13
 
-// How much flash memory to use to store blind/remote/wifi config
+// How much flash memory to use to store blind/remote/wifi config. Beware changing these as it will corrupt the block storage
 #define STORAGE_SECTORS 32
 #define STORAGE_BLOCK_SIZE 252
 
-// Hardware reset
+// Radio hardware reset
 #define PIN_RESET_RADIO 15
 
 const WifiConfig *checkConfig(
-    std::shared_ptr<DeviceConfig> config);
+    std::shared_ptr<DeviceConfig> config,
+    StatusLed *statusLed);
 
 void runServiceMode(
     std::shared_ptr<WebServer> webServer,
     std::shared_ptr<DeviceConfig> config,
     std::shared_ptr<WifiConnection> wifiConnection,
     std::shared_ptr<RadioCommandQueue> commandQueue,
-    std::shared_ptr<ServiceControl> service);
+    std::shared_ptr<ServiceControl> service,
+    StatusLed *mqttLed);
 
 void runSetupMode(
     std::shared_ptr<WebServer> webServer,
     std::shared_ptr<ServiceControl> service);
 
-bool checkButtonHeld(int inputPin, StatusLed &led);
-
-StatusLed redLed(PIN_LED_R);
-StatusLed greenLed(PIN_LED_G);
-StatusLed blueLed(PIN_LED_B);
-
+bool checkButtonHeld(int inputPin, StatusLed *led);
 
 int main()
 {
     stdio_init_all();
 
-    //gpio_init(PIN_LED_R);
-    //gpio_set_dir(PIN_LED_R, GPIO_OUT);
-    //gpio_init(PIN_LED_G);
-    //gpio_set_dir(PIN_LED_G, GPIO_OUT);
-    //gpio_init(PIN_LED_B);
-    //gpio_set_dir(PIN_LED_B, GPIO_OUT);
-
+    // Set up pins for the hard buttons
     gpio_init(PIN_RESET);
     gpio_set_dir(PIN_RESET, GPIO_IN);
     gpio_set_pulls(PIN_RESET, true, false);
@@ -93,34 +89,28 @@ int main()
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
 
-
-    for(auto a = 0; a < 512; a+=2)
-    {
-        redLed.SetLevel(a);
-        sleep_ms(10);
-    }
-    for(auto a = 0; a < 512; a+=2)
-    {
-        greenLed.SetLevel(a);
-        sleep_ms(10);
-    }
-    for(auto a = 0; a < 512; a+=2)
-    {
-        blueLed.SetLevel(a);
-        sleep_ms(10);
-    }
-    redLed.SetLevel(0);
-    greenLed.SetLevel(0);
-    blueLed.SetLevel(0);
-
-   
+    // LED timers need the async context set up to work
     if (cyw43_arch_init()) {
-        printf("Wi-Fi init failed");
-        redLed.SetLevel(1024);
-        greenLed.SetLevel(0);
-        blueLed.SetLevel(0);
+        sleep_ms(6000);
+        printf("Pico init failed");
         return -1;
     }
+
+    StatusLed redLed(PIN_LED_R);
+    StatusLed greenLed(PIN_LED_G);
+    StatusLed blueLed(PIN_LED_B);
+
+    // Pointless startup cycle, to give me enough time to start putty
+    redLed.Pulse(256, 768, 128);
+    sleep_ms(2000);
+    greenLed.Pulse(128, 512, 128);
+    sleep_ms(2000);
+    blueLed.Pulse(128, 512, 128);
+    sleep_ms(2000);
+
+    redLed.TurnOff();
+    greenLed.TurnOff();
+    blueLed.TurnOff();
 
     puts("Starting the Radio\n");
     auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
@@ -135,11 +125,10 @@ int main()
     const uint32_t StorageSize = STORAGE_SECTORS * FLASH_SECTOR_SIZE;
 
     auto config = std::make_shared<DeviceConfig>(StorageSize, STORAGE_BLOCK_SIZE);
-    auto wifiConfig = checkConfig(config);
+    auto wifiConfig = checkConfig(config, &redLed);
     if(wifiConfig == nullptr)
     {
         redLed.SetLevel(1024);
-        greenLed.SetLevel(0);
         blueLed.SetLevel(1024);
         return -1;
     }
@@ -150,13 +139,14 @@ int main()
 
     auto service = std::make_shared<ServiceControl>();
 
-    if(checkButtonHeld(PIN_WIFI, greenLed))
+    if(checkButtonHeld(PIN_WIFI, &greenLed))
     {
         puts("Starting in WIFI Setup mode, as button WIFI button is pressed");
         apMode = true;
     }
 
-    auto wifiConnection = std::make_shared<WifiConnection>(config, apMode);
+    auto wifiLed = apMode?&greenLed:&redLed;
+    auto wifiConnection = std::make_shared<WifiConnection>(config, apMode, wifiLed);
 
     // Do an initial WiFi scan before entering AP mode. We don't seem to be able
     // to scan once in AP mode.
@@ -166,7 +156,7 @@ int main()
     // Now connect to WiFi or Enable AP mode
     wifiConnection->Start();
 
-    auto webServer = std::make_shared<WebServer>(config, wifiConnection);
+    auto webServer = std::make_shared<WebServer>(config, wifiConnection, wifiLed);
     webServer->Start();
     auto configService = std::make_shared<ConfigService>(config, webServer, wifiScanner, service);
 
@@ -176,7 +166,7 @@ int main()
     }
     else
     {
-        runServiceMode(webServer, config, wifiConnection, commandQueue, service);
+        runServiceMode(webServer, config, wifiConnection, commandQueue, service, &greenLed);
     }
 
     puts("Restarting now!\n");
@@ -195,20 +185,22 @@ int main()
 
 }
 
-bool checkButtonHeld(int inputPin, StatusLed &led)
+bool checkButtonHeld(int inputPin, StatusLed *led)
 {
     int a = 0;
     for(a = 0; !gpio_get(inputPin) && a < 100; a++)
     {
-        led.SetLevel((a * 128) & 1023);
+        if(a == 0)
+            led->Pulse(1024, 2048, 256);
         sleep_ms(50);
     }
-    led.SetLevel(0);
+    led->TurnOff();
     return a == 100;
 }
 
 const WifiConfig *checkConfig(
-    std::shared_ptr<DeviceConfig> config)
+    std::shared_ptr<DeviceConfig> config,
+    StatusLed *redLed)
 {
     auto needReset = config->GetWifiConfig() == nullptr;
     if(needReset)
@@ -241,10 +233,11 @@ void runServiceMode(
     std::shared_ptr<DeviceConfig> config,
     std::shared_ptr<WifiConnection> wifiConnection,
     std::shared_ptr<RadioCommandQueue> commandQueue,
-    std::shared_ptr<ServiceControl> service)
+    std::shared_ptr<ServiceControl> service,
+    StatusLed *mqttLed)
 {
 
-    auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline");
+    auto mqttClient = std::make_shared<MqttClient>(config, wifiConnection, "pico_somfy/status", "online", "offline", mqttLed);
 
     mqttClient->Start();
     // Subscribe by wildcard to reduce overhead
@@ -256,8 +249,6 @@ void runServiceMode(
     auto remotes = std::make_shared<SomfyRemotes>(config, blinds, webServer, commandQueue, mqttClient);
     blinds->Initialize(remotes);
 
-    auto onOff = 0x04;
-    
     ServiceStatus statusApi(webServer, mqttClient, false);
 
     ScheduledTimer republishTimer([&blinds, &remotes] () {
@@ -273,8 +264,6 @@ void runServiceMode(
         return 0;
     }, 0);
 
-    
-
     auto mqttConnected = false;
 
     puts("Entering main loop...\n");
@@ -282,7 +271,7 @@ void runServiceMode(
     while(!service->IsStopRequested()) {
 
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
-        sleep_ms(500);
+        sleep_ms(250);
 
         // Lazy man's notification of MQTT reconnection outside of an IRQ callback
         if(!mqttConnected)
@@ -298,16 +287,6 @@ void runServiceMode(
             republishTimer.ResetTimer(0);
             mqttConnected = false;
         }
-
-        // Show Mark we aren't dead
-        redLed.SetLevel( wifiConnection->IsConnected() ?
-            ((onOff & 0x01) ? 1024 : 512) : 0);
-        greenLed.SetLevel( mqttConnected ?
-            ((onOff & 0x04) ? 512 : 256) : 0);
-        if(onOff == 0)
-            onOff = 0x04;
-        else
-            onOff >>= 1;
 
         if(!gpio_get(PIN_RESET))
         {
@@ -353,10 +332,6 @@ void runSetupMode(
 
         // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
         sleep_ms(1000);
-
-        // Show Mark we aren't dead
-        greenLed.SetLevel(onOff ? 1024 : 512);
-        onOff = !onOff;
 
         if(!gpio_get(PIN_RESET))
         {

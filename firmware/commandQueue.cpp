@@ -1,3 +1,7 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+// TODO: Make this a generic command queue
+
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/flash.h"

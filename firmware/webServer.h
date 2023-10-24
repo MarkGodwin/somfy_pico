@@ -1,3 +1,6 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include "dhcpserver.h"
@@ -10,6 +13,7 @@
 class DeviceConfig;
 class ServiceControl;
 class IWifiConnection;
+class StatusLed;
 
 typedef std::map<std::string, std::string> CgiParams;
 typedef std::function<bool(const CgiParams &)> CgiSubscribeFunc;
@@ -17,10 +21,12 @@ typedef std::function<bool(const CgiParams &)> CgiSubscribeFunc;
 typedef std::function<uint16_t(char *buffer, int len, uint16_t tagPart, uint16_t *nextPart)> SsiSubscribeFunc;
 
 
+/// @brief Rather bizarre and very stunted web-server
+/// @remarks This isn't how a sane person would handle web requests in a microcontroller
 class WebServer
 {
     public:
-        WebServer(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifiConnection);
+        WebServer(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifiConnection, StatusLed *statusLed);
 
         void Start();
 
@@ -39,12 +45,14 @@ class WebServer
 
         std::shared_ptr<DeviceConfig> _config;
         std::shared_ptr<IWifiConnection> _wifiConnection;
+        StatusLed *_statusLed;
 
         std::map<std::string, CgiSubscribeFunc> _requestSubscriptions;
         std::map<std::string, SsiSubscribeFunc> _responseSubscriptions;
 
 };
 
+/// @brief Subscription to a CGI callback from the webserver. Used to process incoming request parameters
 class CgiSubscription
 {
     public:
@@ -73,6 +81,7 @@ class CgiSubscription
         std::string _url;
 };
 
+/// @brief Subscription to a Server-side include callback from the webserver. Used to replace fixed tags in the output data.
 class SsiSubscription
 {
     public:

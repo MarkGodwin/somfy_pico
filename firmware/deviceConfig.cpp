@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
 #include <stdio.h>
 #include <string.h>

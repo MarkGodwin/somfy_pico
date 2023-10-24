@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -9,14 +11,16 @@
 #include "webServer.h"
 #include "deviceConfig.h"
 #include "serviceControl.h"
+#include "statusLed.h"
 
 
 // HTTPD callbacks aren't conducive to multiple instances
 WebServer *_globalInstance;
 
-WebServer::WebServer(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifiConnection)
+WebServer::WebServer(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifiConnection, StatusLed *statusLed)
 :   _config(std::move(config)),
-    _wifiConnection(std::move(wifiConnection))
+    _wifiConnection(std::move(wifiConnection)),
+    _statusLed(statusLed)
 {
     _globalInstance = this;
 }
@@ -61,6 +65,7 @@ extern "C" {
 
  uint16_t WebServer::HandleResponse(const char *tag, char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart, bool cgiResult)
  {
+    _statusLed->SetLevel(2048);
     
     if(!strcmp(tag, "result"))
     {
@@ -147,6 +152,7 @@ std::string urlDecode(const char *value)
 
 bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
 {
+    _statusLed->SetLevel(2048);
     printf("CGI executed: %s\n", uri);
 
     std::map<std::string, std::string> params;

@@ -1,3 +1,6 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+
 #include "pico/stdlib.h"
 #include "serviceStatus.h"
 #include "mqttClient.h"

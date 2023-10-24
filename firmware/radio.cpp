@@ -1,3 +1,6 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/spi.h"

@@ -1,4 +1,5 @@
-
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
@@ -7,13 +8,15 @@
 #include "mqttClient.h"
 #include "deviceConfig.h"
 #include "iwifiConnection.h"
+#include "statusLed.h"
 
-MqttClient::MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload)
+MqttClient::MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWifiConnection> wifi, const char *statusTopic, const char *onlinePayload, const char *offlinePayload, StatusLed *statusLed)
 : _config(std::move(config)),
   _wifi(std::move(wifi)),
   _statusTopic(statusTopic),
   _onlinePayload(onlinePayload),
   _offlinePayload(offlinePayload),
+  _statusLed(statusLed),
   _payload(nullptr),
   _client(nullptr)
 {
@@ -38,6 +41,7 @@ void MqttClient::DoConnect()
         puts("Not connecting to MQTT, because WiFi is not connected\n");
         return;
     }
+
 
     auto mqttConfig = _config->GetMqttConfig();
     printf("Connecting to MQTT server at %s:%d\n", mqttConfig->brokerAddress, mqttConfig->port);
@@ -68,6 +72,7 @@ void MqttClient::DoConnect()
     else
     {
         printf("Mqtt connection starting...\n");
+        _statusLed->Pulse(1024, 2048, 256);
     }
 }
 
@@ -137,16 +142,19 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
             puts("Mqtt client is connected");
             Publish(_statusTopic, (const uint8_t *)_onlinePayload, strlen(_onlinePayload));
             DoSubscribe();
+            _statusLed->Pulse(256, 512, 32);
 
             // TODO: Tell observers that we are connected, so they can do any publishing they were waiting for
             break;
         
         default:
             printf("Mqtt client failed to connect (%d)\n", status);
+            _statusLed->TurnOff();
             break;
 
         case MQTT_CONNECT_DISCONNECTED:
             puts("Mqtt client disconnected\n");
+            _statusLed->TurnOff();
             break;
     }
 }
@@ -171,6 +179,7 @@ void MqttClient::SubscriptionResultCallback(err_t result)
 
 void MqttClient::PublishCallback(err_t result)
 {
+    _statusLed->SetLevel(2048);
     if(result)
         printf("Publish Error: %d\n", result);
 }
@@ -189,6 +198,7 @@ void MqttClient::IncomingPublishCallback(const char *topic, u32_t tot_len)
         return;
     }
 
+    _statusLed->SetLevel(2048);
     if(tot_len > 2048)
     {
         printf("Recieved a message of %d bytes, greater than maximum buffer size\n", tot_len);
@@ -215,6 +225,7 @@ void MqttClient::IncomingPayloadCallback(const u8_t *data, u16_t len, u8_t flags
         printf("Ignoring %d bytes of unexpected payload\n", len);
     }
 
+    _statusLed->SetLevel(2048);
     auto remaining = _payloadLength - _payloadReceived;
     if(len > remaining)
     {

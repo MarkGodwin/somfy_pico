@@ -1,5 +1,6 @@
 
 import logo from './logo.svg';
+import pico from './pico.svg';
 import './Navbar.css';
 import { Navbar, Nav, Container } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -10,8 +11,8 @@ export function NavBar() {
       <Navbar className="navbar-expand-lg bg-light">
         <Container>
           <Navbar.Brand className="mb-0 h1">
-            <img src={logo} alt="Somfy" height={25} className="d-inline-block align-text-bottom" />
-            Blind Controller
+            <img src={pico} alt="Pico" height={35} className="d-inline-block me-1" />
+            <img src={logo} alt="Somfy" height={25} className="d-inline-block" />
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="navbarNav" />
           <Navbar.Collapse id="navbarNav">

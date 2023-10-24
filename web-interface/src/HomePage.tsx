@@ -2,6 +2,7 @@ import './HomePage.css';
 import { Col, Container, ListGroup, Row } from "react-bootstrap";
 import { WifiSetup } from './WifiSetup';
 import logo from './logo.svg';
+import pico from './pico.svg';
 
 
 export function HomePage(props: {apMode: boolean, mqttConnected: boolean} ) {
@@ -10,12 +11,14 @@ export function HomePage(props: {apMode: boolean, mqttConnected: boolean} ) {
     <>
       <div className="p-5 mt-4 mb-4 bg-body-tertiary rounded-3">
         <Container className="py-5">
-          <h1 className="display-5 fw-bold">Mark's Unofficial <img src={logo} alt="Somfy" height={50} className="d-inline-block mb-2" />Blind Controller</h1>
-          <p className="col-md-8 fs-5">Control your Somfy blinds and shutters, and integrate with Home Assistant via Mqtt to enable automation of your blinds. While there is an Web interface for blind control and configuration, and an HTTP API for blind control, day-to-day use should be via Home Assistant.</p>
-          <p className="col-md-8 fs-5">It uses a cheap Raspberry Pi Pico-W module and an RFM69HCW module with a total cost of less than £10. This started as an experiment to convice the RFM69HCW module to produce Somfy format frames in packet mode.</p>
-          <p className="col-md-8 fs-4">Credits:</p>
-          <p className="col-md-8 fs-5">This was my attempt to fix the unreliable radio signal from the <a href="https://github.com/Nickduino/Pi-Somfy">Nickduino Pi-Somfy project</a>. It was built using protocol information documented by <a href="https://pushstack.wordpress.com/somfy-rts-protocol/">PushStack</a>.</p>
-          <h2 className="col-md-8 fs-4">Controller status:</h2>
+          <h1 className="display-5 fw-bold">
+            <img src={pico} alt="Pico" height={70} className="d-inline-block me-1" />
+            <img src={logo} alt="Somfy" height={50} className="d-inline-block" /></h1>
+          <h2 className="fs-4">Mark's Unofficial Somfy Blind Controller</h2>
+          <p className="col-md-8 fs-5">Control your Somfy blinds and shutters, and integrate with Home Assistant via Mqtt to enable automation of your blinds.</p>
+          <p className="col-md-8 fs-5">Use this web interface to configure the controller and add/remove blinds and remotes.</p>
+          <p className="col-md-8 fs-5">While the Web interface does allow basic blind control, day-to-day use should be via Home Assistant through the MQTT integration.</p>
+          <h2 className="col-md-8 fs-4 mt-4">Controller status:</h2>
 
           <Row>
             <Col className="col-md-12 col-lg-6">
@@ -46,6 +49,15 @@ export function HomePage(props: {apMode: boolean, mqttConnected: boolean} ) {
           </Col>
           </Row>  
           {props.apMode ? <WifiSetup /> : null}
+
+          <h2 className="col-md-8 fs-4 mt-5">Credits:</h2>
+          <p>
+            <ul className="fs-5">
+              <li>Original concept from <a href="https://github.com/Nickduino/Pi-Somfy">Nickduino Pi-Somfy project</a>.</li>
+              <li>Protocol information reverse engineered by <a href="https://pushstack.wordpress.com/somfy-rts-protocol/">PushStack</a>.</li>
+            </ul>
+          </p>
+          <p>Copyright ©️ 2023 Mark Godwin.</p>
         </Container>
       </div>
     </>

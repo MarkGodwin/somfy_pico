@@ -1,12 +1,16 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 
 #include "wifiConnection.h"
 #include "deviceConfig.h"
+#include "statusLed.h"
 
-WifiConnection::WifiConnection(std::shared_ptr<DeviceConfig> config, bool apMode)
+WifiConnection::WifiConnection(std::shared_ptr<DeviceConfig> config, bool apMode, StatusLed *statusLed)
 : _apMode(apMode),
+  _statusLed(statusLed),
   _config(std::move(config))
 {
     // Start in STA mode so we can do an initial WiFi scan before switching to AP mode
@@ -39,6 +43,8 @@ void WifiConnection::Start()
         // Start the dns server
         dns_server_init(&_dns_server, &host);
 
+        _statusLed->Pulse(256, 1024, 64);
+
     }
     else
     {
@@ -70,9 +76,9 @@ uint32_t WifiConnection::WifiWatchdog()
     auto state = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
 
     // Indicate the state with the LED
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, state > 0);
     if(state <= 0)
     {
+        _statusLed->TurnOff();
         printf("Wifi not connected (%d)\n", state);
 
         auto cfg = _config->GetWifiConfig();
@@ -86,11 +92,13 @@ uint32_t WifiConnection::WifiWatchdog()
     }
     else if(state == CYW43_LINK_UP)
     {
+        _statusLed->Pulse(512, 1024, 64);
         printf("Woof! WiFi looks good\n", state);
         return 60000;
     }
     else
     {
+        _statusLed->Pulse(512, 1024, 256);
         printf("WiFi connected, but no IP assigned (%d)\n", state);
         return 10000;
     }

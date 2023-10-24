@@ -1,5 +1,7 @@
-#pragma once
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
+#pragma once
 
 /// @brief Helper class for witing SSI tag buffers
 class BufferOutput

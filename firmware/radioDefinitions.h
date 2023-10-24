@@ -1,6 +1,9 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+
+// Definitions for the RFM69HCW module SPI API for Pi Pico architecture
+
 #pragma once
-
-
 
 #define RADIO_RegOpMode 0x01
 #define RADIO_RegDataModul 0x02

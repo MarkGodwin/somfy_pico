@@ -1,3 +1,12 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
+// Portions from the Pico samples. We can use the same PWM program for all three output pins independently.
+/**
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include "pico/stdlib.h"
 #include <stdio.h>
 #include "statusLed.h"
@@ -6,12 +15,6 @@
 #include "pulsefade.pio.h"
 
 
-// From the Pico samples. We can use the same PWM program for all three output pins independently.
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
 
 #define DEFAULT_PIO pio0
 static uint nextStateMachine = 0;
@@ -39,6 +42,7 @@ uint do_pulsefade_init()
 StatusLed::StatusLed(int pin)
 :   _pin(pin),
     _stateMachine(nextStateMachine++),
+    _pulseTimer([this]() { return DoPulse(); }, 0),
     _mode(0)
 {
 }
@@ -68,6 +72,7 @@ void StatusLed::SwitchMode(uint mode)
         pio_sm_exec(DEFAULT_PIO, _stateMachine, pio_encode_out(pio_isr, 32));
         pio_sm_set_enabled(DEFAULT_PIO, _stateMachine, true);
     }
+    // Failed to get this working.
     // else if(mode == 2)
     // {
     //     auto offset = do_pulsefade_init();
@@ -86,6 +91,7 @@ void StatusLed::TurnOn()
 void StatusLed::TurnOff()
 {
     SwitchMode(0);
+    _pulseTimer.ResetTimer(0);
 }
 
 void StatusLed::SetLevel(uint16_t level)
@@ -102,9 +108,29 @@ void StatusLed::SetLevel(uint16_t level)
     }
 }
 
-// void StatusLed::Pulse(uint delay)
-// {
-//     SwitchMode(2);
-//     pio_sm_put_blocking(DEFAULT_PIO, _stateMachine, 268435456);
+void StatusLed::Pulse(int minPulse, int maxPulse, int pulseSpeed)
+{
+    _currentPulse = minPulse;
+    _minPulse = minPulse;
+    _maxPulse = maxPulse;
+    _pulseSpeed = pulseSpeed;
+    SetLevel(minPulse);
+    _pulseTimer.ResetTimer(100);
+}
 
-// }
+uint32_t StatusLed::DoPulse()
+{
+    _currentPulse += _pulseSpeed;
+    if(_currentPulse <= _minPulse)
+    {
+        _currentPulse = _minPulse;
+        _pulseSpeed = -_pulseSpeed;
+    }
+    else if(_currentPulse >= _maxPulse)
+    {
+        _currentPulse = _maxPulse;
+        _pulseSpeed = -_pulseSpeed;
+    }
+    SetLevel(_currentPulse);
+    return 100;
+}

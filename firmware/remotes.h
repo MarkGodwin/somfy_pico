@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Mark Godwin.
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
