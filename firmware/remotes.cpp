@@ -144,7 +144,7 @@ bool SomfyRemotes::DoAddRemote(const CgiParams &params)
         return false;
     }
 
-    CreateRemote(nameparam->second)->TriggerPublishDiscovery();
+    CreateRemote(nameparam->second);
     return true;
 }
 

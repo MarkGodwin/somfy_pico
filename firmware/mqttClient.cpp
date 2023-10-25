@@ -25,14 +25,14 @@ MqttClient::MqttClient(std::shared_ptr<DeviceConfig> config, std::shared_ptr<IWi
 void MqttClient::Start()
 {
     auto mqttConfig = _config->GetMqttConfig();
-    _client = mqtt_client_new();
-
     // No MQTT settings, so no MQTT client
     if(!strnlen(mqttConfig->brokerAddress, sizeof(mqttConfig->brokerAddress)))
     {
         puts("No MQTT configuration is present.");
         return;
     }
+
+    _client = mqtt_client_new();
 
     // Start the connection attemps after a few seconds...
     _watchdogTimer = std::make_unique<ScheduledTimer>([this]() { return MqttWatchdog(); }, 5000);
@@ -99,6 +99,8 @@ bool MqttClient::IsConnected()
 
 void MqttClient::SubscribeTopic(const char *topic)
 {
+    if(!_client)
+        return;
     if(_subscribedTopics.insert(topic).second && IsConnected())
     {
         mqtt_subscribe(_client, topic, 0, SubscriptionRequestCallbackEntry, this);
@@ -107,6 +109,8 @@ void MqttClient::SubscribeTopic(const char *topic)
 
 void MqttClient::UnsubscribeTopic(const char *topic)
 {
+    if(!_client)
+        return;
     printf("Unsubscribing from MQTT: %s", topic);
     if(_subscribedTopics.erase(topic) && IsConnected())
     {
@@ -116,12 +120,16 @@ void MqttClient::UnsubscribeTopic(const char *topic)
 
 void MqttClient::AddTopicCallback(const char *topic, SubscribeFunc &&callback)
 {
+    if(!_client)
+        return;
     _topicCallbacks.insert({topic, callback});
 }
 
 
 void MqttClient::RemoveTopicCallback(const char *topic)
 {
+    if(!_client)
+        return;
     _topicCallbacks.erase(topic);
 }
 

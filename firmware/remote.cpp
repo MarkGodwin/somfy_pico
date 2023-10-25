@@ -34,7 +34,7 @@ SomfyRemote::SomfyRemote(
       _rollingCode(rollingCode),
       _associatedBlinds(std::move(associatedBlinds)),
       _isDirty(false),
-      _needsPublish(true),
+      _needsPublish(false),
       _cmdSubscription(mqttClient, string_format("pico_somfy/remotes/%08x/cmd", remoteId), [this](const uint8_t *payload, uint32_t length)
                        { OnCommand(payload, length); }),
       _discoveryWorker([this]()
@@ -42,6 +42,7 @@ SomfyRemote::SomfyRemote(
 {
     printf("Remote ID %08x: %s\n", remoteId, name.c_str());
     printf("    Rolling code: %d\n    Blind Count: %d\n", _rollingCode, _associatedBlinds.size());
+    TriggerPublishDiscovery();
 }
 
 void SomfyRemote::SaveConfig(bool force)

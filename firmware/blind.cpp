@@ -24,7 +24,7 @@ Blind::Blind(
     std::shared_ptr<DeviceConfig> config)
 :   _blindId(blindId),
     _isDirty(false),
-    _needsPublish(true),
+    _needsPublish(false),
     _name(std::move(name)),
     _targetPosition(currentPosition),
     _intermediatePosition(currentPosition),
@@ -41,12 +41,14 @@ Blind::Blind(
     _discoveryWorker([this]() { PublishDiscovery(); })
 {
     printf("Blind ID %d: %s\n", _blindId, _name.c_str());
-    printf("    Target Position: %d\nOpen time: %d\nClose time: %d\nFavourite: %d", _targetPosition, _openTime, _closeTime, _favouritePosition);
+    printf("    Target Position: %d\nOpen time: %d\nClose time: %d\nFavourite: %d\n", _targetPosition, _openTime, _closeTime, _favouritePosition);
 
     if(_favouritePosition > 100 || _favouritePosition < 0)
         _favouritePosition = 50;
 
     _lastTick = get_absolute_time();
+
+    TriggerPublishDiscovery();
 }
 
 Blind::~Blind()
@@ -170,11 +172,11 @@ uint32_t Blind::UpdatePosition()
 {
     // Tick - update position, motion state & publish
     auto now = get_absolute_time();
-    auto elapsed = absolute_time_diff_us(_lastTick, now) / 1000000.0f;
-    printf("Blind %d, TargetPosition %d, IntermediatePosition %hf, Tick: %hfs\n", _blindId, _targetPosition, _intermediatePosition, elapsed);
-
+ 
     if(_motionDirection)
     {
+        auto elapsed = absolute_time_diff_us(_lastTick, now) / 1000000.0f;
+        printf("Blind %d, TargetPosition %d, IntermediatePosition %hf, Tick: %hfs\n", _blindId, _targetPosition, _intermediatePosition, elapsed);
         auto pctPerSecond = 100.0f / (_motionDirection > 0 ? _openTime : -_closeTime);
         // Update the blind position, given the time elapsed
         auto travelled = elapsed * pctPerSecond;
@@ -198,10 +200,11 @@ uint32_t Blind::UpdatePosition()
     _lastTick = now;
 
     // Tell the MQTT subscribers where we are at
-    PublishPosition();
+    auto needsPublish = PublishPosition();
 
-    // Tick again if we're in motion
-    return _motionDirection ? 1000 : 0;
+    // Tick again if we're in motion, or we need to try publishing again later
+    return _motionDirection ? 1000 :
+        needsPublish ? 30000 : 0;
 }
 
 void Blind::OnCommand(const uint8_t *payload, uint32_t length)
@@ -229,23 +232,38 @@ void Blind::OnSetPosition(const uint8_t *payload, uint32_t length)
 }
 
 
-void Blind::PublishPosition()
+bool Blind::PublishPosition()
 {
+    if(!_mqttClient->IsEnabled())
+        return true;
+
     char topic[42];
     sprintf(topic, "pico_somfy/blinds/%08x/position", _blindId);
 
     char buff[16];
     BufferOutput payload(buff, sizeof(buff));
     payload.Append((int)_intermediatePosition);
-    _mqttClient->Publish(topic, (uint8_t *)buff, payload.BytesWritten());
+    if(!_mqttClient->Publish(topic, (uint8_t *)buff, payload.BytesWritten()))
+    {
+        return false;
+    }
 
     sprintf(topic, "pico_somfy/blinds/%08x/state", _blindId);
-    _mqttClient->Publish(
+    return _mqttClient->Publish(
         topic,
         (uint8_t *)(_motionDirection > 0 ? "opening" :
                     _motionDirection < 0 ? "closing" :
                                            "stopped"),
         7); // All payloads are 7 bytes...
+}
+
+void Blind::TriggerPublishDiscovery()
+{
+    if(_mqttClient->IsEnabled())
+    {
+        _needsPublish = true;
+        _discoveryWorker.ScheduleWork();
+    }
 }
 
 void Blind::PublishDiscovery()
@@ -261,6 +279,7 @@ void Blind::PublishDiscovery()
         _needsPublish = false;
         return;
     }
+
     printf("Discovery topic: %s\n", mqttConfig->topic); 
 
     char payload[512];

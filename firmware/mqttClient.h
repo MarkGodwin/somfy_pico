@@ -26,6 +26,10 @@ class MqttClient
 
         void Start();
 
+        /// @brief True, if MQTT is configured
+        bool IsEnabled() { return _client != nullptr; }
+
+        /// @brief True if MQTT is enabled and connected.
         bool IsConnected();
 
         /// @brief Add a subscription to the client. Can be used with wildcards

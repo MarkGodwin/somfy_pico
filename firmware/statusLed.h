@@ -38,4 +38,5 @@ private:
     int _minPulse;
     int _maxPulse;
     int _pulseSpeed;
+    absolute_time_t _lastTick;
 };

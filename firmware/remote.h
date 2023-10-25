@@ -60,8 +60,11 @@ public:
 
     bool NeedsPublish() { return _needsPublish; }
     void TriggerPublishDiscovery() {
-        _needsPublish = true;
-        _discoveryWorker.ScheduleWork();
+        if(_mqttClient->IsEnabled())
+        {
+            _needsPublish = true;
+            _discoveryWorker.ScheduleWork();
+        }
     }
 
 

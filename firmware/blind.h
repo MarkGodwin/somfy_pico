@@ -60,10 +60,7 @@ class Blind
         void OnSetPosition(const uint8_t *payload, uint32_t length);
 
         bool NeedsPublish() { return _needsPublish; }
-        void TriggerPublishDiscovery() {
-            _needsPublish = true;
-            _discoveryWorker.ScheduleWork();
-        }
+        void TriggerPublishDiscovery();
 
         void SaveConfig(bool force = false);
 
@@ -72,7 +69,7 @@ class Blind
 
         /// @brief Called periodically for blinds in motion to update their guess of their actual position.
         uint32_t UpdatePosition();
-        void PublishPosition();
+        bool PublishPosition();
         void PublishDiscovery();
 
         uint16_t _blindId;

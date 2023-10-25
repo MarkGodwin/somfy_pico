@@ -40,7 +40,6 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
         if(remote)
         {
             auto blind = std::make_unique<Blind>(blindids[a], cfg->blindName, cfg->currentPosition, cfg->myPosition, cfg->openTime, cfg->closeTime, remote, _mqttClient, _config);
-            blind->TriggerPublishDiscovery();
             _blinds.insert(
                 {
                     blindids[a],
@@ -131,7 +130,6 @@ bool Blinds::DoAddBlind(const CgiParams &params)
 
     auto newBlind = std::make_unique<Blind>(newId, nameParam->second, 90, 50, openTime, closeTime, newRemote, _mqttClient, _config);
     newBlind->SaveConfig(true);
-    newBlind->TriggerPublishDiscovery();
 
     auto created = _blinds.insert({newId, std::move(newBlind)});
     newRemote->AssociateBlind(newId);
