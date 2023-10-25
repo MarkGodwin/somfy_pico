@@ -249,7 +249,7 @@ bool Blind::PublishPosition()
     }
 
     sprintf(topic, "pico_somfy/blinds/%08x/state", _blindId);
-    return _mqttClient->Publish(
+    return !_mqttClient->Publish(
         topic,
         (uint8_t *)(_motionDirection > 0 ? "opening" :
                     _motionDirection < 0 ? "closing" :

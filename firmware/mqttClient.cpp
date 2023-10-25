@@ -87,6 +87,10 @@ uint32_t MqttClient::MqttWatchdog()
     {
         DoConnect();
     }
+    else
+    {
+        printf("-");
+    }
 
     // Restart timer
     return 60000;

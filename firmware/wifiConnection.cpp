@@ -51,15 +51,14 @@ void WifiConnection::Start()
     {
         auto cfg = _config->GetWifiConfig();
 
-        printf("Connecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
+        printf("Wifi: Initial blocking connect - %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_blocking(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
         if(result)
         {
-            printf("Failed to connect: %d\n", result);
-            printf("Reconnecting later...\n");
+            printf("  Failed to connect: %d\n  Reconnecting later\n", result);
         }
         else
-            printf("Connected connect: %d\n", result);
+            puts("  Wifi Connected!");
 
         _wifiWatchdog = std::make_unique<ScheduledTimer>([this]() { return WifiWatchdog(); }, 1000);
     }
@@ -81,15 +80,13 @@ uint32_t WifiConnection::WifiWatchdog()
     {
         _wasConnected = false;
         _statusLed->TurnOff();
-        printf("Wifi not connected (%d)\n", state);
+        printf("Wifi: Not connected (%d)\n", state);
 
         auto cfg = _config->GetWifiConfig();
-        printf("Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
+        printf("    Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_async(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
         if(result)
-        {
-            printf("Unable to begin reconnect (%d)\n", result);
-        }
+            printf("    Unable to begin reconnect (%d)\n", result);
         return 5000;
     }
     else if(state == CYW43_LINK_UP)
@@ -97,14 +94,14 @@ uint32_t WifiConnection::WifiWatchdog()
         if(!_wasConnected)
             _statusLed->Pulse(0, 1024, 128);
         _wasConnected = true;
-        printf("Woof! WiFi looks good\n", state);
+        printf(".");
         return 60000;
     }
     else
     {
         _wasConnected = false;
         _statusLed->Pulse(0, 2048, 512);
-        printf("WiFi connected, but no IP assigned (%d)\n", state);
+        printf("Wifi: No IP assigned (%d)\n", state);
         return 10000;
     }
 }
