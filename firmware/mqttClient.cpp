@@ -27,9 +27,14 @@ void MqttClient::Start()
     auto mqttConfig = _config->GetMqttConfig();
     _client = mqtt_client_new();
 
+    // No MQTT settings, so no MQTT client
     if(!strnlen(mqttConfig->brokerAddress, sizeof(mqttConfig->brokerAddress)))
+    {
+        puts("No MQTT configuration is present.");
         return;
+    }
 
+    // Start the connection attemps after a few seconds...
     _watchdogTimer = std::make_unique<ScheduledTimer>([this]() { return MqttWatchdog(); }, 5000);
 
 }
@@ -57,7 +62,7 @@ void MqttClient::DoConnect()
     ci.will_msg = _offlinePayload;
     ci.will_retain = true;
     ci.will_topic = _statusTopic;
-    ci.keep_alive = 50;
+    ci.keep_alive = 40;
 
     ip_addr_t brokerAddress;
     ipaddr_aton(mqttConfig->brokerAddress, &brokerAddress);
@@ -142,21 +147,25 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
             puts("Mqtt client is connected");
             Publish(_statusTopic, (const uint8_t *)_onlinePayload, strlen(_onlinePayload));
             DoSubscribe();
-            _statusLed->Pulse(256, 512, 32);
+            _statusLed->Pulse(0, 512, 64);
+            // Cheat: The main loop will do a republish of anything that needs it
+            return;
 
-            // TODO: Tell observers that we are connected, so they can do any publishing they were waiting for
+        case MQTT_CONNECT_TIMEOUT:
+            puts("Mqtt connection timeout");
             break;
         
-        default:
-            printf("Mqtt client failed to connect (%d)\n", status);
-            _statusLed->TurnOff();
-            break;
-
         case MQTT_CONNECT_DISCONNECTED:
             puts("Mqtt client disconnected\n");
-            _statusLed->TurnOff();
             break;
+
+        default:
+            printf("Mqtt client failed to connect (%d)\n", status);
+            break;
+
     }
+
+    _statusLed->TurnOff();
 }
 
 void MqttClient::DoSubscribe()

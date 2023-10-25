@@ -29,6 +29,7 @@ class WifiConnection : public IWifiConnection
         std::shared_ptr<DeviceConfig> _config;
         StatusLed *_statusLed;
         bool _apMode;
+        bool _wasConnected;
         // For AP mode        
         dhcp_server_t _dhcp_server;
         dns_server_t _dns_server;

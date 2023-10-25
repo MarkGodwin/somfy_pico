@@ -11,7 +11,8 @@
 WifiConnection::WifiConnection(std::shared_ptr<DeviceConfig> config, bool apMode, StatusLed *statusLed)
 : _apMode(apMode),
   _statusLed(statusLed),
-  _config(std::move(config))
+  _config(std::move(config)),
+  _wasConnected(false)
 {
     // Start in STA mode so we can do an initial WiFi scan before switching to AP mode
     cyw43_arch_enable_sta_mode();
@@ -78,6 +79,7 @@ uint32_t WifiConnection::WifiWatchdog()
     // Indicate the state with the LED
     if(state <= 0)
     {
+        _wasConnected = false;
         _statusLed->TurnOff();
         printf("Wifi not connected (%d)\n", state);
 
@@ -92,13 +94,16 @@ uint32_t WifiConnection::WifiWatchdog()
     }
     else if(state == CYW43_LINK_UP)
     {
-        _statusLed->Pulse(512, 1024, 64);
+        if(!_wasConnected)
+            _statusLed->Pulse(0, 1024, 128);
+        _wasConnected = true;
         printf("Woof! WiFi looks good\n", state);
         return 60000;
     }
     else
     {
-        _statusLed->Pulse(512, 1024, 256);
+        _wasConnected = false;
+        _statusLed->Pulse(0, 2048, 512);
         printf("WiFi connected, but no IP assigned (%d)\n", state);
         return 10000;
     }
