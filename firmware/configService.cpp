@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Mark Godwin.
 // SPDX-License-Identifier: MIT
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 
 #include "configService.h"
 #include "serviceControl.h"
@@ -64,22 +64,22 @@ bool ConfigService::OnConfigure(const CgiParams &params)
             strlcpy(cfg.password, password.c_str(), sizeof(cfg.password));
         }
 
-        puts("Saving config\n");
+       DBG_PUT("Saving config\n");
         _config->SaveWifiConfig(&cfg);
-        puts("Restarting service\n");
+       DBG_PUT("Restarting service\n");
         _serviceControl->StopService();
         return true;
     }
     else if(mode == "mqtt")
     {
-        puts("Setting MQTT config\n");
+       DBG_PUT("Setting MQTT config\n");
         if(!params.count("host") ||
             !params.count("port") ||
             !params.count("username") ||
             !params.count("password") ||
             !params.count("topic"))
         {
-            puts("Missing arguments\n");
+           DBG_PUT("Missing arguments\n");
             return false;
         }
 
@@ -99,14 +99,14 @@ bool ConfigService::OnConfigure(const CgiParams &params)
         strlcpy(cfg.topic, params.at("topic").c_str(), sizeof(cfg.topic));
 
 
-        puts("Saving config\n");
+       DBG_PUT("Saving config\n");
         _config->SaveMqttConfig(&cfg);
-        puts("Restarting service\n");
+       DBG_PUT("Restarting service\n");
         _serviceControl->StopService();
     }
     else if(mode == "firmware")
     {
-        puts("Requesting firmware reboot\n");
+       DBG_PUT("Requesting firmware reboot\n");
         _serviceControl->StopService(true);
         return true;
     }

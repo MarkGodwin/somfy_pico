@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Mark Godwin.
 // SPDX-License-Identifier: MIT
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 
 #include "remotes.h"
 #include "deviceConfig.h"
@@ -26,7 +26,7 @@ SomfyRemotes::SomfyRemotes(
     uint32_t count;
     const uint16_t *remoteIds = _config->GetRemoteIds(&count);
 
-    printf("There are %d remotes registered\n", count);
+   DBG_PRINT("There are %d remotes registered\n", count);
 
     _nextId = BaseRemoteId + 1;
     for(auto a = 0; a < count; a++)
@@ -61,7 +61,7 @@ std::shared_ptr<SomfyRemote> SomfyRemotes::GetRemote(uint32_t remoteId)
 
 std::shared_ptr<SomfyRemote> SomfyRemotes::CreateRemote(std::string remoteName)
 {
-    printf("Creating new remote with id %08x\n", _nextId);
+   DBG_PRINT("Creating new remote with id %08x\n", _nextId);
     auto id = _nextId++;
     auto newRemote = std::make_shared<SomfyRemote>(_commandQueue, _blinds, _config, _mqttClient, remoteName, id, 1, std::vector<uint16_t>());
     _remotes.insert({id, newRemote});
@@ -119,14 +119,14 @@ std::shared_ptr<SomfyRemote> SomfyRemotes::GetRemoteParam(const CgiParams &param
     if(idparam == params.end() ||
         !sscanf(idparam->second.c_str(), "%u", &id))
     {
-        puts("Invalid command: Bad id parameter\n");
+       DBG_PUT("Invalid command: Bad id parameter\n");
         return nullptr;
     }
 
     auto entry = _remotes.find(id);
     if(entry == _remotes.end())
     {
-        printf("Invalid command: No remote with id %d\n", id);
+       DBG_PRINT("Invalid command: No remote with id %d\n", id);
         return nullptr;
     }
     return entry->second;
@@ -140,7 +140,7 @@ bool SomfyRemotes::DoAddRemote(const CgiParams &params)
         nameparam->second.length() + 1 > sizeof(RemoteConfig::remoteName) ||
         nameparam->second.find('\"') != std::string::npos)
     {
-        puts("Bad name parameter\n");
+       DBG_PUT("Bad name parameter\n");
         return false;
     }
 
@@ -159,7 +159,7 @@ bool SomfyRemotes::DoUpdateRemote(std::shared_ptr<SomfyRemote> remote, const Cgi
         nameparam->second.length() + 1 > sizeof(RemoteConfig::remoteName) ||
         nameparam->second.find('\"') != std::string::npos)
     {
-        puts("Bad name parameter\n");
+       DBG_PUT("Bad name parameter\n");
         return false;
     }
 
@@ -189,13 +189,13 @@ bool SomfyRemotes::DoAddOrRemoveBlindToRemote(std::shared_ptr<SomfyRemote> remot
     if(idparam == params.end() ||
         !sscanf(idparam->second.c_str(), "%hu", &id))
     {
-        puts("Invalid command: Bad blindId parameter\n");
+       DBG_PUT("Invalid command: Bad blindId parameter\n");
         return false;
     }
 
     if(!_blinds->Exists(id))
     {
-        printf("No blind exists with id %d\n", id);
+       DBG_PRINT("No blind exists with id %d\n", id);
         return false;
     }
 
@@ -213,7 +213,7 @@ bool SomfyRemotes::DoButtonPress(std::shared_ptr<SomfyRemote> remote, const CgiP
     if(buttonParam == params.end() ||
         !sscanf(buttonParam->second.c_str(), "%d", &buttons))
     {
-        puts("Invalid command: Bad buttons parameter\n");
+       DBG_PUT("Invalid command: Bad buttons parameter\n");
     }
     auto longParam = params.find("long");
     auto longPress = (longParam != params.end() && longParam->second == "true");

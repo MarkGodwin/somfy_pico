@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Mark Godwin.
 // SPDX-License-Identifier: MIT
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "pico/cyw43_arch.h"
 #include "pico/flash.h"
 #include "lwip/apps/httpd.h"
@@ -82,7 +82,7 @@ extern "C" {
     if(subscription == _responseSubscriptions.end())
     {
         // Unknown tag...
-        printf("Unknown SSI tag: %8s\n", tag);
+       DBG_PRINT("Unknown SSI tag: %8s\n", tag);
         return 0;
     }
 
@@ -153,13 +153,13 @@ std::string urlDecode(const char *value)
 bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, char **pcParam, char **pcValue)
 {
     _statusLed->SetLevel(2048);
-    printf("CGI executed: %s\n", uri);
+   DBG_PRINT("CGI executed: %s\n", uri);
 
     std::map<std::string, std::string> params;
     for(auto a = 0; a < iNumParams; a++)
     {
         auto val = urlDecode(pcValue[a]);
-        printf("    %s = %s\n", pcParam[a], val.c_str());
+       DBG_PRINT("    %s = %s\n", pcParam[a], val.c_str());
         params[pcParam[a]] = val;
     }
 
@@ -169,7 +169,7 @@ bool WebServer::HandleRequest(fs_file *file, const char *uri, int iNumParams, ch
         return kvp->second(params);
     }
 
-    puts("Ignoring unknown CGI\n");
+   DBG_PUT("Ignoring unknown CGI\n");
     return false;
 }
 

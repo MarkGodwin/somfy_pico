@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <stdio.h>
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "pico/flash.h"
 #include <string.h>
 #include "blockStorage.h"
@@ -53,25 +53,25 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
     auto freeBlock = FindBlock(BLOCK_FREE);
     if(freeBlock == -1)
     {
-        puts("No free blocks found");
+       DBG_PUT("No free blocks found");
 
         // If there are no free blocks, try to reformat all contiguous empty sectors.
         FormatEmptySectors();
         freeBlock = FindBlock(BLOCK_FREE);
         if(freeBlock == -1)
         {
-            puts("ERROR: Still no free blocks found");
+           DBG_PUT("ERROR: Still no free blocks found");
             return;
         }
     }
 
-    printf("Free block found at 0x%08x\n", freeBlock);
+   DBG_PRINT("Free block found at 0x%08x\n", freeBlock);
 
     // First find any existing block and "delete" it by nulling out it's first page
     auto existing = FindBlock(blockId);
     if(existing != -1)
     {
-        printf("Deleting existing record at 0x%08x\n", existing);
+       DBG_PRINT("Deleting existing record at 0x%08x\n", existing);
         DeletePage(existing);
     }
 
@@ -85,7 +85,7 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
     };
     PgmData d = {blockId, freeBlock, data, size};
 
-    printf("Flashing new record at... 0x%08x (0x%08x)\n", d.offset, d.size);
+   DBG_PRINT("Flashing new record at... 0x%08x (0x%08x)\n", d.offset, d.size);
     auto result = flash_safe_execute([](void *p) {
         // Copy the first pages directly
         auto params = (PgmData *)p;
@@ -106,7 +106,7 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
             off += bytes;
             if(space > 0)
                 ::memset(tmpPage + off, 0, space);
-            printf("Flashing one page at 0x%08x\n", params->offset);
+           DBG_PRINT("Flashing one page at 0x%08x\n", params->offset);
 
             flash_range_program(params->offset, tmpPage, sizeof(tmpPage));
             params->offset += sizeof(d);
@@ -117,7 +117,7 @@ void BlockStorage::SaveBlock(uint32_t blockId, const uint8_t *data, size_t size)
     }, &d, 1000);
     if(result != PICO_OK)
     {
-        printf("Write failed (%d)\n", result);
+       DBG_PRINT("Write failed (%d)\n", result);
     }
 
 }
@@ -127,27 +127,27 @@ void BlockStorage::ClearBlock(uint32_t blockId)
     auto existing = FindBlock(blockId);
     if(existing != -1)
     {
-        printf("Deleting existing record at 0x%08x\n", existing);
+       DBG_PRINT("Deleting existing record at 0x%08x\n", existing);
         DeletePage(existing);
     }
     else
     {
-        printf("Record ID %08x not found to delete\n", blockId);
+       DBG_PRINT("Record ID %08x not found to delete\n", blockId);
     }
 }
 
 void BlockStorage::Format()
 {
-    printf("Formatting entire block storage: 0x%08x - 0x%08x\n", _base, _sectors * FLASH_SECTOR_SIZE);
+   DBG_PRINT("Formatting entire block storage: 0x%08x - 0x%08x\n", _base, _sectors * FLASH_SECTOR_SIZE);
     auto result = flash_safe_execute([](void *p) {
         auto pthis = (BlockStorage *)p;
         flash_range_erase(pthis->_base, pthis->_sectors * FLASH_SECTOR_SIZE);
     }, this, 1000);
 
     if(result == PICO_OK)
-        puts("Formatting complete");
+       DBG_PUT("Formatting complete");
     else
-        printf("Format failed (%d)\n", result);
+       DBG_PRINT("Format failed (%d)\n", result);
 }
 
 void BlockStorage::DeletePage(uint32_t pageOffset)

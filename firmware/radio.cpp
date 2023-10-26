@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <stdio.h>
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "hardware/spi.h"
 #include "radio.h"
 #include "radioDefinitions.h"
@@ -180,8 +180,8 @@ inline bool RFM69Radio::WaitForMode()
         sleep_us(1);
     }
 
-    printf("Waited too long for ready.\n");
-    printf("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
+   DBG_PUT("Waited too long for ready.");
+   DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
     return false;
 }
 
@@ -198,8 +198,8 @@ inline bool RFM69Radio::WaitForPacketSent()
         sleep_us(100);
     }
 
-    printf("Waited too long for send to complete.\n");
-    printf("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
+   DBG_PUT("Waited too long for send to complete.");
+   DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
     return false;
 }
 

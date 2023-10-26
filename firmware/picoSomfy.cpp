@@ -3,7 +3,7 @@
 //
 // Main entry point!
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "hardware/spi.h"
 #include "hardware/pio.h"
 #include "hardware/watchdog.h"
@@ -89,7 +89,7 @@ void doPollingSleep(uint ms)
 
     //if(totalPollTime > totalWaitTime)
     //{
-    //    printf("Long poll: %u/%u ms\n", (int)(totalPollTime/1000), ms);
+    //    DBG_PRINT("Long poll: %u/%u ms\n", (int)(totalPollTime/1000), ms);
     //}
     
 #else
@@ -100,7 +100,9 @@ void doPollingSleep(uint ms)
 
 int main()
 {
+#ifndef NDEBUG
     stdio_init_all();
+#endif
 
     // Set up pins for the hard buttons
     gpio_init(PIN_RESET);
@@ -119,7 +121,7 @@ int main()
     // LED timers need the async context set up to work
     if (cyw43_arch_init()) {
         sleep_ms(6000);
-        printf("Pico init failed");
+        DBG_PUT("Pico init failed");
         return -1;
     }
 
@@ -139,12 +141,12 @@ int main()
     greenLed.TurnOff();
     blueLed.TurnOff();
 
-    puts("Starting the Radio\n");
+    DBG_PUT("Starting the Radio");
     auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
 
     // We'll run radio commands from the core 1 thread
     auto commandQueue = std::make_shared<RadioCommandQueue>(radio, &blueLed);
-    puts("Starting worker thread...\n");
+    DBG_PUT("Starting worker thread...");
     commandQueue->Start();
 
     // Store flash settings at the very top of Flash memory
@@ -162,16 +164,15 @@ int main()
 
     auto apMode = !wifiConfig->ssid[0];
 
-    puts("Starting the web interface...\n");
-
     auto service = std::make_shared<ServiceControl>();
 
     if(checkButtonHeld(PIN_WIFI, &greenLed))
     {
-        puts("Starting in WIFI Setup mode, as button WIFI button is pressed");
+        DBG_PUT("Starting in WIFI Setup mode, as button WIFI button is pressed");
         apMode = true;
     }
 
+    DBG_PUT("Starting the WiFi Scanner...");
     auto wifiLed = apMode?&greenLed:&redLed;
     auto wifiConnection = std::make_shared<WifiConnection>(config, apMode, wifiLed);
 
@@ -181,8 +182,10 @@ int main()
     wifiScanner->WaitForScan();
 
     // Now connect to WiFi or Enable AP mode
+    DBG_PRINT("Enabling WiFi in %s mode...\n", apMode ? "AP" : "Client");
     wifiConnection->Start();
 
+    DBG_PUT("Starting the web interface...");
     auto webServer = std::make_shared<WebServer>(config, wifiConnection, wifiLed);
     webServer->Start();
     auto configService = std::make_shared<ConfigService>(config, webServer, wifiScanner, service);
@@ -196,7 +199,7 @@ int main()
         runServiceMode(webServer, config, wifiConnection, commandQueue, service, &greenLed);
     }
 
-    puts("Restarting now!\n");
+    DBG_PUT("Restarting now!");
     doPollingSleep(1000);
 
     if(service->IsFirmwareUpdateRequested())
@@ -208,7 +211,7 @@ int main()
         watchdog_reboot(0,0,500);
     }
     doPollingSleep(5000);
-    puts("ERM!!! Why no reboot?\n");
+    DBG_PUT("ERM!!! Why no reboot?");
 
 }
 
@@ -229,9 +232,11 @@ const WifiConfig *checkConfig(
     std::shared_ptr<DeviceConfig> config,
     StatusLed *redLed)
 {
+    DBG_PUT("Checking Device config...");
+    
     auto needReset = config->GetWifiConfig() == nullptr;
     if(needReset)
-        puts("WiFi Config not found.\n");
+        DBG_PUT("WiFi Config not found.");
     else
     {
         needReset = checkButtonHeld(PIN_RESET, redLed);
@@ -239,17 +244,16 @@ const WifiConfig *checkConfig(
 
     if(needReset)
     {
-        puts("Resetting all settings!");
+        DBG_PUT("Resetting all settings!");
         config->HardReset();
     }
 
-    puts("Checking Device config...\n");
 
     auto wifiConfig = config->GetWifiConfig();
     if(wifiConfig == nullptr ||
         config->GetMqttConfig() == nullptr)
     {
-        puts("Settings could not be read back. Error!\n");
+        DBG_PUT("Settings could not be read back. Error!\n");
         return nullptr;
     }
     return wifiConfig;
@@ -295,7 +299,7 @@ void runServiceMode(
 
     auto asyncContext = cyw43_arch_async_context();
 
-    puts("Entering main loop...\n");
+    DBG_PUT("Entering main loop...");
     bool resetPushed = false;
     while(!service->IsStopRequested()) {
 
@@ -320,7 +324,7 @@ void runServiceMode(
         {
             if(resetPushed)
             {
-                puts("Reset pushed!");
+                DBG_PUT("Reset pushed!");
                 service->StopService(false);
             }
             resetPushed = true;
@@ -331,18 +335,19 @@ void runServiceMode(
         }
         if(!gpio_get(PIN_WIFI))
         {
-            puts("WIFI pushed");
+            // TODO: Reset WiFi or something in this case?
+            DBG_PUT("WIFI pushed");
         }
 
     }
 
     republishTimer.ResetTimer(0);
 
-    puts("Waiting for the command queue to clear...\n");
+    DBG_PUT("Waiting for the command queue to clear...");
     commandQueue->Shutdown();
 
 
-    puts("Saving any unsaved state.\n");
+    DBG_PUT("Saving any unsaved state.\n");
     remotes->SaveRemoteState();
     blinds->SaveBlindState(true);
 
@@ -354,7 +359,7 @@ void runSetupMode(
 {
     ServiceStatus statusApi(webServer, nullptr, true);
 
-    puts("Entering setup loop...\n");
+    DBG_PUT("Entering setup loop...");
     auto onOff = false;
     while(!service->IsStopRequested()) {
 
@@ -362,11 +367,11 @@ void runSetupMode(
 
         if(!gpio_get(PIN_RESET))
         {
-            printf("Reset pushed\n");
+            DBG_PUT("Reset pushed");
             service->StopService();
         }
         if(!gpio_get(PIN_WIFI))
-            printf("WIFI pushed\n");
+            DBG_PUT("WIFI pushed");
     }
 
 }

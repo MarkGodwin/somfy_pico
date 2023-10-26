@@ -26,7 +26,7 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(somfy_remote 
-  somfy_remote.cpp
+  picoSomfy.cpp
   radio.cpp
   remotes.cpp
   remote.cpp

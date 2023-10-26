@@ -7,7 +7,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include <stdio.h>
 #include "statusLed.h"
 #include "hardware/pio.h"

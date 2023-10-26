@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // TODO: Make this a generic command queue
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "pico/multicore.h"
 #include "pico/flash.h"
 #include <string.h>
@@ -66,7 +66,7 @@ void RadioCommandQueue::Start()
         if(!flash_safe_execute_core_init())
         {
             // Unsafe to continue this thread...
-            printf("Flash init failed\n");
+           DBG_PUT("Flash init failed");
             return;
         }
 
@@ -86,16 +86,16 @@ void RadioCommandQueue::Worker()
 {
     _led->SetLevel(512);
     _radio->Reset();
-    puts("Radio Reset complete!\n");
+   DBG_PUT("Radio Reset complete!");
     _radio->Initialize();
     _radio->SetSymbolWidth(635);
     _radio->SetFrequency(433.44);
     auto fq = _radio->GetFrequency();
-    printf("Radio frequency: %.3f\n", fq);
+   DBG_PRINT("Radio frequency: %.3f\n", fq);
     auto br = _radio->GetBitRate();
-    printf("BitRate: %dbps\n", br);
+   DBG_PRINT("BitRate: %dbps\n", br);
     auto ver = _radio->GetVersion();
-    printf("Radio version: 0x%02x\n", ver);
+   DBG_PRINT("Radio version: 0x%02x\n", ver);
     _led->SetLevel(0);
 
     while(true)

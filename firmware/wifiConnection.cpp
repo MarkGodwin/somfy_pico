@@ -1,7 +1,7 @@
 // Copyright (c) 2023 Mark Godwin.
 // SPDX-License-Identifier: MIT
 
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "pico/cyw43_arch.h"
 
 #include "wifiConnection.h"
@@ -24,13 +24,13 @@ void WifiConnection::Start()
     // In AP mode we will only scan WiFi once at startup, and then switch into AP Mode.
     if(_apMode)
     {
-        puts("Disabling scan mode");
+       DBG_PUT("Disabling scan mode");
         cyw43_arch_disable_sta_mode();
 
         const char *ap_name = "pico_somfy";
         const char *password = "password";
 
-        puts("Enabling ap mode");
+       DBG_PUT("Enabling ap mode");
         cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
 
 
@@ -51,14 +51,14 @@ void WifiConnection::Start()
     {
         auto cfg = _config->GetWifiConfig();
 
-        printf("Wifi: Initial blocking connect - %s (%s)\n", cfg->ssid, cfg->password);
+       DBG_PRINT("Wifi: Initial blocking connect - %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_blocking(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
         if(result)
         {
-            printf("  Failed to connect: %d\n  Reconnecting later\n", result);
+           DBG_PRINT("  Failed to connect: %d\n  Reconnecting later\n", result);
         }
         else
-            puts("  Wifi Connected!");
+           DBG_PUT("  Wifi Connected!");
 
         _wifiWatchdog = std::make_unique<ScheduledTimer>([this]() { return WifiWatchdog(); }, 1000);
     }
@@ -80,13 +80,13 @@ uint32_t WifiConnection::WifiWatchdog()
     {
         _wasConnected = false;
         _statusLed->TurnOff();
-        printf("Wifi: Not connected (%d)\n", state);
+       DBG_PRINT("Wifi: Not connected (%d)\n", state);
 
         auto cfg = _config->GetWifiConfig();
-        printf("    Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
+       DBG_PRINT("    Reconnecting to WiFi %s (%s)\n", cfg->ssid, cfg->password);
         auto result = cyw43_arch_wifi_connect_async(cfg->ssid, cfg->password, CYW43_AUTH_WPA2_AES_PSK);
         if(result)
-            printf("    Unable to begin reconnect (%d)\n", result);
+           DBG_PRINT("    Unable to begin reconnect (%d)\n", result);
         return 5000;
     }
     else if(state == CYW43_LINK_UP)
@@ -94,14 +94,14 @@ uint32_t WifiConnection::WifiWatchdog()
         if(!_wasConnected)
             _statusLed->Pulse(0, 1024, 128);
         _wasConnected = true;
-        printf(".");
+        DBG_PRINT_NA(".");
         return 60000;
     }
     else
     {
         _wasConnected = false;
         _statusLed->Pulse(0, 2048, 512);
-        printf("Wifi: No IP assigned (%d)\n", state);
+       DBG_PRINT("Wifi: No IP assigned (%d)\n", state);
         return 10000;
     }
 }

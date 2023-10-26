@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "pico/stdlib.h"
+#include "picoSomfy.h"
 #include "pico/flash.h"
 #include "pico/malloc.h"
 
@@ -117,14 +117,14 @@ void DeviceConfig::HardReset()
 
         WifiConfig cfg;
         memset(&cfg, 0, sizeof(WifiConfig));
-        puts("Saving WiFi config\n");
+       DBG_PUT("Saving WiFi config\n");
         SaveWifiConfig(&cfg);
 
         MqttConfig mcfg;
         memset(&mcfg, 0, sizeof(mcfg));
         strcpy(mcfg.brokerAddress, "");
         mcfg.port = 1883;
-        puts("Saving Mqtt config\n");
+       DBG_PUT("Saving Mqtt config\n");
         SaveMqttConfig(&mcfg);
 
 }
@@ -133,12 +133,12 @@ void DeviceConfig::SaveIdList(uint32_t header, const uint16_t *ids, uint32_t cou
 {
     size_t bytes = sizeof(count) + sizeof(uint16_t) * count;
     if(bytes > _storage.BlockSize())
-        puts("Too many ids to fit in the block. FAIL\n");
+       DBG_PUT("Too many ids to fit in the block. FAIL\n");
 
     auto buf = (uint8_t *)malloc(bytes);
     if(buf == nullptr)
     {
-        printf("Failed to allocate a buffer of %d bytes to save ID list\n", bytes);
+       DBG_PRINT("Failed to allocate a buffer of %d bytes to save ID list\n", bytes);
         return;
     }
     memcpy(buf, &count, sizeof(count));
