@@ -79,7 +79,7 @@
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
 // Allow <!--#xxx--> substitution
-#define HTTPD_DEBUG LWIP_DBG_OFF
+#define HTTPD_DEBUG                 LWIP_DBG_OFF
 #define LWIP_HTTPD_SSI                  1
 // Just give us all of the tags as raw strings
 #define LWIP_HTTPD_SSI_RAW              1

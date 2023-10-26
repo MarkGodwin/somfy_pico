@@ -30,11 +30,18 @@ void WifiScanner::TriggerScan()
 
 void WifiScanner::WaitForScan()
 {
+    puts("Waiting for Wifi scan to finish...");
     while(cyw43_wifi_scan_active(&cyw43_state))
     {
-        printf("Waiting for scan to finish...");
+#if PICO_CYW43_ARCH_POLL
+        auto wakeTime = make_timeout_time_ms(1000);
+        cyw43_arch_wait_for_work_until(wakeTime);
+        cyw43_arch_poll();
+#else
         sleep_ms(1000);
+#endif
     }
+    puts("Wifi scan complete.");
 }
 
 void WifiScanner::CollectResults()

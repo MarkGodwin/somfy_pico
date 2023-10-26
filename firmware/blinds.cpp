@@ -45,7 +45,6 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
                     blindids[a],
                     std::move(blind)
                 });
-            sleep_ms(250);
         }
         else
         {

@@ -45,7 +45,6 @@ StatusLed::StatusLed(int pin)
     _pulseTimer([this]() { return DoPulse(); }, 0),
     _mode(0)
 {
-    _lastTick = get_absolute_time();
 }
 
 void StatusLed::SwitchMode(uint mode)
@@ -121,13 +120,6 @@ void StatusLed::Pulse(int minPulse, int maxPulse, int pulseSpeed)
 
 uint32_t StatusLed::DoPulse()
 {
-    auto now = get_absolute_time();
-    if(absolute_time_diff_us(_lastTick, now) > 200000)
-    {
-        puts("slow tick");
-    }
-    _lastTick = now;
-
     _currentPulse += _pulseSpeed;
     if(_currentPulse <= _minPulse)
     {
@@ -141,12 +133,5 @@ uint32_t StatusLed::DoPulse()
     }
     SetLevel(_currentPulse);
 
-    now = get_absolute_time();
-    if(absolute_time_diff_us(_lastTick, now) > 10000)
-    {
-        puts("slow pwm set");
-    }
-
-    _lastTick = now;
     return 100;
 }

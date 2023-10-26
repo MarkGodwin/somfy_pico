@@ -71,6 +71,33 @@ void runSetupMode(
 
 bool checkButtonHeld(int inputPin, StatusLed *led);
 
+void doPollingSleep(uint ms)
+{
+#if PICO_CYW43_ARCH_POLL
+    auto wakeTime = make_timeout_time_ms(ms);
+    //auto totalPollTime = 0ll;
+    //auto totalWaitTime = 0ll;
+    do
+    {
+        //auto startPoll = get_absolute_time();
+        cyw43_arch_poll();
+        //auto endPoll = get_absolute_time();
+        //totalPollTime += absolute_time_diff_us(startPoll, endPoll);
+        cyw43_arch_wait_for_work_until(wakeTime);
+        //totalWaitTime += absolute_time_diff_us(endPoll, get_absolute_time());
+    } while(absolute_time_diff_us(get_absolute_time(), wakeTime) > 0);
+
+    //if(totalPollTime > totalWaitTime)
+    //{
+    //    printf("Long poll: %u/%u ms\n", (int)(totalPollTime/1000), ms);
+    //}
+    
+#else
+    // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
+    sleep_ms(ms);
+#endif
+}
+
 int main()
 {
     stdio_init_all();
@@ -102,11 +129,11 @@ int main()
 
     // Pointless startup cycle, to give me enough time to start putty
     redLed.Pulse(256, 768, 128);
-    sleep_ms(2000);
+    doPollingSleep(2000);
     greenLed.Pulse(128, 512, 128);
-    sleep_ms(2000);
+    doPollingSleep(2000);
     blueLed.Pulse(128, 512, 128);
-    sleep_ms(2000);
+    doPollingSleep(2000);
 
     redLed.TurnOff();
     greenLed.TurnOff();
@@ -170,7 +197,7 @@ int main()
     }
 
     puts("Restarting now!\n");
-    sleep_ms(1000);
+    doPollingSleep(1000);
 
     if(service->IsFirmwareUpdateRequested())
     {
@@ -180,7 +207,7 @@ int main()
     {
         watchdog_reboot(0,0,500);
     }
-    sleep_ms(5000);
+    doPollingSleep(5000);
     puts("ERM!!! Why no reboot?\n");
 
 }
@@ -192,7 +219,7 @@ bool checkButtonHeld(int inputPin, StatusLed *led)
     {
         if(a == 0)
             led->Pulse(1024, 2048, 256);
-        sleep_ms(50);
+        doPollingSleep(50);
     }
     led->TurnOff();
     return a == 100;
@@ -266,12 +293,13 @@ void runServiceMode(
 
     auto mqttConnected = false;
 
+    auto asyncContext = cyw43_arch_async_context();
+
     puts("Entering main loop...\n");
     bool resetPushed = false;
     while(!service->IsStopRequested()) {
 
-        // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
-        sleep_ms(250);
+        doPollingSleep(250);
 
         // Lazy man's notification of MQTT reconnection outside of an IRQ callback
         if(!mqttConnected)
@@ -330,8 +358,7 @@ void runSetupMode(
     auto onOff = false;
     while(!service->IsStopRequested()) {
 
-        // We're using background IRQ callbacks from LWIP, so we can just sleep peacfully...
-        sleep_ms(1000);
+        doPollingSleep(1000);
 
         if(!gpio_get(PIN_RESET))
         {
