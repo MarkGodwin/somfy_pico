@@ -63,13 +63,13 @@ static void dump_bytes(const uint8_t *bptr, uint32_t len) {
 
     for (i = 0; i < len;) {
         if ((i & 0x0f) == 0) {
-           DBG_PRINT("\n");
+            DBG_PRINT("\n");
         } else if ((i & 0x07) == 0) {
-           DBG_PRINT(" ");
+            DBG_PRINT(" ");
         }
-       DBG_PRINT("%02x ", bptr[i++]);
+        DBG_PRINT("%02x ", bptr[i++]);
     }
-   DBG_PRINT("\n");
+    DBG_PRINT("\n");
 }
 #endif
 

@@ -124,7 +124,7 @@ void RadioCommandQueue::Start()
         if(!flash_safe_execute_core_init())
         {
             // Unsafe to continue this thread...
-           DBG_PUT("Flash init failed");
+            DBG_PUT("Flash init failed");
             return;
         }
 
@@ -144,22 +144,24 @@ void RadioCommandQueue::Worker()
 {
     _led->SetLevel(512);
     _radio->Reset();
-   DBG_PUT("Radio Reset complete!");
+    DBG_PUT("Radio Reset complete!");
     _radio->Initialize();
     _radio->SetSymbolWidth(640);
     _radio->SetFrequency(433.42);
     auto fq = _radio->GetFrequency();
-   DBG_PRINT("Radio frequency: %.3f\n", fq);
+    DBG_PRINT("Radio frequency: %.3f\n", fq);
     auto br = _radio->GetBitRate();
-   DBG_PRINT("BitRate: %dbps\n", br);
+    DBG_PRINT("BitRate: %dbps\n", br);
     auto ver = _radio->GetVersion();
-   DBG_PRINT("Radio version: 0x%02x\n", ver);
+    DBG_PRINT("Radio version: 0x%02x\n", ver);
     _led->SetLevel(0);
 
     while(true)
     {
         // Enter RX mode while we wait...
         // Wait for the end of any sync bytes (both initial and repeat ends the same way)
+        // By offsetting the sync bytes by 1 bit, we get good reception... The sync pulses
+        // from the genuine remotes don't match the main signal section symbol width exactly.
         uint8_t syncBytes[] = {0xE1, 0xE1, 0xFE};
         _radio->SetSyncBytes(syncBytes, sizeof(syncBytes));
         _radio->SetPacketFormat(true, 7);

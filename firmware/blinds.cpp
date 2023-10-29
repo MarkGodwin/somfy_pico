@@ -28,7 +28,7 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
     uint32_t count;
     const uint16_t *blindids = _config->GetBlindIds(&count);
 
-   DBG_PRINT("There are %d blinds registered\n", count);
+    DBG_PRINT("There are %d blinds registered\n", count);
 
     auto errors = false;
     for(auto a = 0; a < count; a++)
@@ -48,7 +48,7 @@ void Blinds::Initialize(std::shared_ptr<SomfyRemotes> remotes)
         }
         else
         {
-           DBG_PRINT("Deleting blind id %d with missing remote %08x\n", blindids[a], cfg->remoteId );
+            DBG_PRINT("Deleting blind id %d with missing remote %08x\n", blindids[a], cfg->remoteId );
             _config->DeleteBlindConfig(blindids[a]);
             errors = true;
         }
@@ -91,7 +91,7 @@ void Blinds::SaveBlindState(bool force)
 
 void Blinds::SaveBlindList()
 {
-   DBG_PRINT("Saving blind list with %d blind ids.\n", _blinds.size());
+    DBG_PRINT("Saving blind list with %d blind ids.\n", _blinds.size());
     uint16_t ids[128];
     uint16_t *idoff = ids;
     for(auto iter = _blinds.begin(); iter != _blinds.end(); iter++)
@@ -111,7 +111,7 @@ bool Blinds::DoAddBlind(const CgiParams &params)
        openTimeParam == params.end() ||
        closeTimeParam == params.end())
     {
-       DBG_PUT("Missing arguments to AddBlind");
+        DBG_PUT("Missing arguments to AddBlind");
         return false;
     }
 
@@ -119,7 +119,7 @@ bool Blinds::DoAddBlind(const CgiParams &params)
     if( !sscanf(openTimeParam->second.c_str(), "%d", &openTime) ||
         !sscanf(closeTimeParam->second.c_str(), "%d", &closeTime))
     {
-       DBG_PUT("Bad open or close time parameters");
+        DBG_PUT("Bad open or close time parameters");
         return false;
     }
 
@@ -150,7 +150,7 @@ bool Blinds::DoUpdateBlind(const CgiParams &params)
        openTimeParam == params.end() ||
        closeTimeParam == params.end())
     {
-       DBG_PUT("Missing arguments to AddBlind");
+        DBG_PUT("Missing arguments to AddBlind");
         return false;
     }
 
@@ -160,18 +160,18 @@ bool Blinds::DoUpdateBlind(const CgiParams &params)
         !sscanf(openTimeParam->second.c_str(), "%d", &openTime) ||
         !sscanf(closeTimeParam->second.c_str(), "%d", &closeTime))
     {
-       DBG_PUT("Bad open or close time parameters");
+        DBG_PUT("Bad open or close time parameters");
         return false;
     }
 
     auto pos = _blinds.find(id);
     if(pos == _blinds.end())
     {
-       DBG_PRINT("No blind with id %d found\n", id);
+        DBG_PRINT("No blind with id %d found\n", id);
         return false;
     }
 
-   DBG_PUT("Updating blind....");
+    DBG_PUT("Updating blind....");
     pos->second->UpdateConfig(nameParam->second, openTime, closeTime);
     return true;
 }
@@ -184,7 +184,7 @@ bool Blinds::DoDeleteBlind(const CgiParams &params)
     uint32_t id;
     if(!sscanf(idParam->second.c_str(), "%d", &id))
     {
-       DBG_PRINT("Can't read ID %s\n", idParam->second.c_str());
+        DBG_PRINT("Can't read ID %s\n", idParam->second.c_str());
         return false;
     }
     
@@ -211,21 +211,21 @@ bool Blinds::DoBlindCommand(const CgiParams &params)
 
     if(idParam == params.end() || commandParam == params.end() || payloadParam == params.end())
     {
-       DBG_PUT("Bad command received - missing arguments\n");
+        DBG_PUT("Bad command received - missing arguments\n");
         return false;
     }
 
     uint32_t id;
     if(!sscanf(idParam->second.c_str(), "%d", &id))
     {
-       DBG_PRINT("Can't read ID %s\n", idParam->second.c_str());
+        DBG_PRINT("Can't read ID %s\n", idParam->second.c_str());
         return false;
     }
 
     auto blindEntry = _blinds.find(id);
     if(blindEntry == _blinds.end())
     {
-       DBG_PRINT("No blind found with ID %d\n", id);
+        DBG_PRINT("No blind found with ID %d\n", id);
         return false;
     }
 
@@ -234,7 +234,7 @@ bool Blinds::DoBlindCommand(const CgiParams &params)
     else if(commandParam->second == "pos")
         blindEntry->second->OnSetPosition((const uint8_t *)payloadParam->second.c_str(), payloadParam->second.length());
     else
-       DBG_PRINT("Unexpected command: %s", commandParam->second.c_str());
+        DBG_PRINT("Unexpected command: %s", commandParam->second.c_str());
     return true;
 }
 

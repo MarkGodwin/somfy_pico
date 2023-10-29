@@ -30,7 +30,7 @@ void WifiScanner::TriggerScan()
 
 void WifiScanner::WaitForScan()
 {
-   DBG_PUT("Waiting for Wifi scan to finish...");
+    DBG_PUT("Waiting for Wifi scan to finish...");
     while(cyw43_wifi_scan_active(&cyw43_state))
     {
 #if PICO_CYW43_ARCH_POLL
@@ -41,7 +41,7 @@ void WifiScanner::WaitForScan()
         sleep_ms(1000);
 #endif
     }
-   DBG_PUT("Wifi scan complete.");
+    DBG_PUT("Wifi scan complete.");
 }
 
 void WifiScanner::CollectResults()
@@ -51,11 +51,11 @@ void WifiScanner::CollectResults()
 
     if(_activeResults.empty())
     {
-       DBG_PUT("No new results found\n");
+        DBG_PUT("No new results found\n");
         return;
     }
 
-   DBG_PRINT("%d new SSID results found", _activeResults.size());
+    DBG_PRINT("%d new SSID results found", _activeResults.size());
     std::swap(_ssids, _activeResults);
     _activeResults.clear();
 
@@ -76,7 +76,7 @@ int WifiScanner::ScanResult(const cyw43_ev_scan_result_t *result)
     if (!result)
         return 0;
         
-   DBG_PRINT("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
+    DBG_PRINT("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
         result->ssid, result->rssi, result->channel,
         result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
         result->auth_mode);

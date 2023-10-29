@@ -290,7 +290,7 @@ bool SomfyRemotes::DoAddOrRemoveBlindToRemote(std::shared_ptr<SomfyRemote> remot
 
     if(!_blinds->Exists(id))
     {
-       DBG_PRINT("No blind exists with id %d\n", id);
+        DBG_PRINT("No blind exists with id %d\n", id);
         return false;
     }
 

@@ -64,22 +64,22 @@ bool ConfigService::OnConfigure(const CgiParams &params)
             strlcpy(cfg.password, password.c_str(), sizeof(cfg.password));
         }
 
-       DBG_PUT("Saving config\n");
+        DBG_PUT("Saving config\n");
         _config->SaveWifiConfig(&cfg);
-       DBG_PUT("Restarting service\n");
+        DBG_PUT("Restarting service\n");
         _serviceControl->StopService();
         return true;
     }
     else if(mode == "mqtt")
     {
-       DBG_PUT("Setting MQTT config\n");
+        DBG_PUT("Setting MQTT config\n");
         if(!params.count("host") ||
             !params.count("port") ||
             !params.count("username") ||
             !params.count("password") ||
             !params.count("topic"))
         {
-           DBG_PUT("Missing arguments\n");
+            DBG_PUT("Missing arguments\n");
             return false;
         }
 
@@ -99,14 +99,14 @@ bool ConfigService::OnConfigure(const CgiParams &params)
         strlcpy(cfg.topic, params.at("topic").c_str(), sizeof(cfg.topic));
 
 
-       DBG_PUT("Saving config\n");
+        DBG_PUT("Saving config\n");
         _config->SaveMqttConfig(&cfg);
-       DBG_PUT("Restarting service\n");
+        DBG_PUT("Restarting service\n");
         _serviceControl->StopService();
     }
     else if(mode == "firmware")
     {
-       DBG_PUT("Requesting firmware reboot\n");
+        DBG_PUT("Requesting firmware reboot\n");
         _serviceControl->StopService(true);
         return true;
     }

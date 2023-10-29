@@ -62,8 +62,8 @@ void SomfyRemote::SaveConfig(bool force)
         config.blindCount = sizeof(config.blinds) / sizeof(config.blinds[0]);
     memcpy(config.blinds, _associatedBlinds.data(), sizeof(uint16_t) * config.blindCount);
 
-   DBG_PRINT("Saving remote ID %d: %s\n", config.remoteId, config.remoteName);
-   DBG_PRINT("    Rolling code: %d\n    Blind Count: %d\n", config.rollingCode, config.blindCount);
+    DBG_PRINT("Saving remote ID %d: %s\n", config.remoteId, config.remoteName);
+    DBG_PRINT("    Rolling code: %d\n    Blind Count: %d\n", config.rollingCode, config.blindCount);
 
     _config->SaveRemoteConfig(_remoteId, &config);
     _isDirty = false;
@@ -129,22 +129,22 @@ void SomfyRemote::PublishDiscovery()
         // We'll be called again when MQTT connects
         return;
 
-   DBG_PRINT("Discovery publish for remote %d (%s)\n", _remoteId, _remoteName.c_str());
+    DBG_PRINT("Discovery publish for remote %d (%s)\n", _remoteId, _remoteName.c_str());
     auto mqttConfig = _config->GetMqttConfig();
     if (!*mqttConfig->topic)
     {
-       DBG_PUT("Discovery topic not configured\n");
+        DBG_PUT("Discovery topic not configured\n");
         _needsPublish = false;
         return;
     }
     // No discovery for the primary remote for any blind
     if (_blinds->IsAPrimaryRemote(_remoteId))
     {
-       DBG_PUT("Primary remote for blind not published\n");
+        DBG_PUT("Primary remote for blind not published\n");
         _needsPublish = false;
         return;
     }
-   DBG_PRINT("Discovery topic: %s\n", mqttConfig->topic);
+    DBG_PRINT("Discovery topic: %s\n", mqttConfig->topic);
 
     if( PublishDiscovery("up", "Up Button", mqttConfig->topic) &&
         PublishDiscovery("down", "Down Button", mqttConfig->topic) &&
@@ -180,7 +180,7 @@ bool SomfyRemote::PublishDiscovery(const char *cmd, const char *name, const char
     char topic[68];
     snprintf(topic, sizeof(topic), "%s/button/pico_somfy/%08x_%s/config", baseTopic, _remoteId, cmd);
     topic[67] = 0;
-   DBG_PRINT("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
+    DBG_PRINT("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
 
     return _mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten());
 }

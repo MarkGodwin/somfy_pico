@@ -28,7 +28,7 @@ void MqttClient::Start()
     // No MQTT settings, so no MQTT client
     if(!strnlen(mqttConfig->brokerAddress, sizeof(mqttConfig->brokerAddress)))
     {
-       DBG_PUT("No MQTT configuration is present.");
+        DBG_PUT("No MQTT configuration is present.");
         return;
     }
 
@@ -43,13 +43,13 @@ void MqttClient::DoConnect()
 {
     if(!_wifi->IsConnected())
     {
-       DBG_PUT("Not connecting to MQTT, because WiFi is not connected\n");
+        DBG_PUT("Not connecting to MQTT, because WiFi is not connected\n");
         return;
     }
 
 
     auto mqttConfig = _config->GetMqttConfig();
-   DBG_PRINT("Connecting to MQTT server at %s:%d\n", mqttConfig->brokerAddress, mqttConfig->port);
+    DBG_PRINT("Connecting to MQTT server at %s:%d\n", mqttConfig->brokerAddress, mqttConfig->port);
     mqtt_connect_client_info_t ci;
     memset(&ci, 0, sizeof(ci));
     err_t err;
@@ -67,16 +67,16 @@ void MqttClient::DoConnect()
     ip_addr_t brokerAddress;
     ipaddr_aton(mqttConfig->brokerAddress, &brokerAddress);
 
-   DBG_PRINT("Addr: %08x\n", brokerAddress.addr);
+    DBG_PRINT("Addr: %08x\n", brokerAddress.addr);
     
     err = mqtt_client_connect(_client, &brokerAddress, mqttConfig->port, ConnectionCallbackEntry, this, &ci);
     
     if(err != ERR_OK) {
-       DBG_PRINT("Mqtt connection failure: %d\n", err);
+        DBG_PRINT("Mqtt connection failure: %d\n", err);
     }    
     else
     {
-       DBG_PUT("Mqtt connection starting...");
+        DBG_PUT("Mqtt connection starting...");
         _statusLed->Pulse(1024, 2048, 256);
     }
 }
@@ -89,7 +89,7 @@ uint32_t MqttClient::MqttWatchdog()
     }
     else
     {
-       DBG_PRINT_NA("-");
+        DBG_PRINT_NA("-");
     }
 
     // Restart timer
@@ -115,7 +115,7 @@ void MqttClient::UnsubscribeTopic(const char *topic)
 {
     if(!_client)
         return;
-   DBG_PRINT("Unsubscribing from MQTT: %s", topic);
+    DBG_PRINT("Unsubscribing from MQTT: %s", topic);
     if(_subscribedTopics.erase(topic) && IsConnected())
     {
         mqtt_unsubscribe(_client, topic, SubscriptionRequestCallbackEntry, this);
@@ -141,12 +141,12 @@ bool MqttClient::Publish(const char *topic, const uint8_t *payload, uint32_t len
 {
     if(!IsConnected())
     {
-       DBG_PUT("Can't publish - not connected to broker");
+        DBG_PUT("Can't publish - not connected to broker");
         return false;
     }
     auto result = mqtt_publish(_client, topic, payload, length, 0, retain, PublishCallbackEntry, this);
     if(result)
-       DBG_PRINT("Publish failed (%d)\n", result);
+        DBG_PRINT("Publish failed (%d)\n", result);
     return result == ERR_OK;
 }
 
@@ -156,7 +156,7 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
     switch(status)
     {
         case MQTT_CONNECT_ACCEPTED:
-           DBG_PUT("Mqtt client is connected");
+            DBG_PUT("Mqtt client is connected");
             Publish(_statusTopic, (const uint8_t *)_onlinePayload, strlen(_onlinePayload));
             DoSubscribe();
             _statusLed->Pulse(0, 512, 64);
@@ -164,15 +164,15 @@ void MqttClient::ConnectionCallback(mqtt_connection_status_t status)
             return;
 
         case MQTT_CONNECT_TIMEOUT:
-           DBG_PUT("Mqtt connection timeout");
+            DBG_PUT("Mqtt connection timeout");
             break;
         
         case MQTT_CONNECT_DISCONNECTED:
-           DBG_PUT("Mqtt client disconnected\n");
+            DBG_PUT("Mqtt client disconnected\n");
             break;
 
         default:
-           DBG_PRINT("Mqtt client failed to connect (%d)\n", status);
+            DBG_PRINT("Mqtt client failed to connect (%d)\n", status);
             break;
 
     }
@@ -195,14 +195,14 @@ void MqttClient::DoSubscribe()
 
 void MqttClient::SubscriptionResultCallback(err_t result)
 {
-   DBG_PRINT("Subscribe result: %d\n", result);
+    DBG_PRINT("Subscribe result: %d\n", result);
 }
 
 void MqttClient::PublishCallback(err_t result)
 {
     _statusLed->SetLevel(2048);
     if(result)
-       DBG_PRINT("Publish Error: %d\n", result);
+        DBG_PRINT("Publish Error: %d\n", result);
 }
 
 void MqttClient::IncomingPublishCallback(const char *topic, u32_t tot_len)
@@ -210,7 +210,7 @@ void MqttClient::IncomingPublishCallback(const char *topic, u32_t tot_len)
     auto sub = _topicCallbacks.find(topic);
     if(sub == _topicCallbacks.end())
     {
-       DBG_PRINT("Recieved a message for %s with no subscription\n", topic);
+        DBG_PRINT("Recieved a message for %s with no subscription\n", topic);
         if(_payload)
         {
             delete [] _payload;
@@ -222,13 +222,13 @@ void MqttClient::IncomingPublishCallback(const char *topic, u32_t tot_len)
     _statusLed->SetLevel(2048);
     if(tot_len > 2048)
     {
-       DBG_PRINT("Recieved a message of %d bytes, greater than maximum buffer size\n", tot_len);
+        DBG_PRINT("Recieved a message of %d bytes, greater than maximum buffer size\n", tot_len);
         return;
     }
 
     if(_payload)
     {
-       DBG_PUT("Unexpected: Overwriting previous payload buffer\n");
+        DBG_PUT("Unexpected: Overwriting previous payload buffer\n");
         delete [] _payload;
         _payload = nullptr;
     }
@@ -243,14 +243,14 @@ void MqttClient::IncomingPayloadCallback(const u8_t *data, u16_t len, u8_t flags
 {
     if(_payload == nullptr)
     {
-       DBG_PRINT("Ignoring %d bytes of unexpected payload\n", len);
+        DBG_PRINT("Ignoring %d bytes of unexpected payload\n", len);
     }
 
     _statusLed->SetLevel(2048);
     auto remaining = _payloadLength - _payloadReceived;
     if(len > remaining)
     {
-       DBG_PUT("Got more payload than we expected");
+        DBG_PUT("Got more payload than we expected");
         delete [] _payload;
         _payload = nullptr;
         return;

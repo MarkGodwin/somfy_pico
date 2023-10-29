@@ -40,8 +40,8 @@ Blind::Blind(
     _refreshTimer([this]() { return UpdatePosition(); }, 0),
     _discoveryWorker([this]() { PublishDiscovery(); })
 {
-   DBG_PRINT("Blind ID %d: %s\n", _blindId, _name.c_str());
-   DBG_PRINT("    Target Position: %d\nOpen time: %d\nClose time: %d\nFavourite: %d\n", _targetPosition, _openTime, _closeTime, _favouritePosition);
+    DBG_PRINT("Blind ID %d: %s\n", _blindId, _name.c_str());
+    DBG_PRINT("    Target Position: %d\nOpen time: %d\nClose time: %d\nFavourite: %d\n", _targetPosition, _openTime, _closeTime, _favouritePosition);
 
     if(_favouritePosition > 100 || _favouritePosition < 0)
         _favouritePosition = 50;
