@@ -5,7 +5,11 @@ This is the result of that experiment getting way out of hand:
 
 ![image](./images/board.jpg)
 
-Pico Somfy in a DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It can be put together using a cheap Raspberry PI Pico W and an RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a prototype PCB now too.
+Pico Somfy in a DIY hardware project for controlling Somfy Blinds in Home Assistant (or with MQTT/HTTP). It also listens to
+signals from real Somfy remotes, so it can know if the blinds have been moved outside of its control. This is useful because
+the Somfy protocol is one-way.
+
+ It can be put together using a cheap Raspberry PI Pico W and an RFM69HCW module. You can put this together on a breadboard, but it's very very cheap to manufacture a prototype PCB now too.
 
 The (my first) EasyEDA PCB layout is provided in the pcb folder. You can get 5 boards manufactured by JLC PCB about $5, delivered!
 
@@ -57,18 +61,31 @@ and enter your WiFi credentials so Pico Somfy can connect to your network. Note:
 
 Click Save & Reboot.
 
-Pico Somfy should start up and connect to the Wifi network. You should see a pulsing red light.
+Pico Somfy should start up and connect to the Wifi network. You should see a pulsing red light which indicates WiFi
+is connected and has an IP address assigned.
 If the light does not light, the WiFi connection could not be established. You can re-enter WiFi setup mode by pressing
 Reset for a short press, and then holding the WiFi button for about 10 seconds during startup until the green LED
 lights steadily.
 
-Figure out what IP address your Pico Somfy has been assigned. You can get this from your router.
-Go to the web interface at http://<your-pico-ip-here> to configure your Pico Somfy, and to connect to MQTT.
+Next, Figure out what IP address your Pico Somfy has been assigned. You can get this from your router. The device should
+show up as pico_somfy in your router client list. Then go to the web interface at http://&lt;your-pico-ip-here&gt;
+to configure your Pico Somfy.
 
-You can then go to the setup page to add your MQTT configuration settings. This is required for Home Assistant integration. If MQTT is connected, you will see a pulsing green status light.
+You can then go to the Network Setup page to add your MQTT configuration settings. This is required for Home Assistant integration.
+Once MQTT is connected, you will see a pulsing green status light.
 
 Blinds can be added from the Control Blinds page. I reccomend you add a blind for each blind you want to control first
 and then add additional remotes to group them together as required.
+
+If you want to import a real remote, there is a button for that. This allows you to bind the real
+remote to your blind instances, so that the system knows which blinds will move when the remote is
+activated. While you can issue commands as if they came from the real remote, this will get the
+rolling codes out-of-sequence, so isn't a good idea. Better to create a new blind remote, and use
+the Somfy copy/paste.
+
+You can bind remotes to blinds in the edit page:
+
+<img src="images/Binding.png" width="300" />;
 
 The Blind control page and interface is pretty rough around the edges, and not designed to be used for any
 more than setting up the blinds and testing the functions. Use Home Assistant or the MQTT/HTTP API for control
@@ -82,8 +99,11 @@ the direction of the blinds and the blind limits.
 
 To configure a blind that already has a remote associated with it, long-press the program button
 on the existing remote. Then short-press the program button on the new blind's remote (see the ...
-button on the blind controls). Some Somfy documentation says you need a long-press. This may be
-true of some blinds, but not mine.
+button on the blind controls):
+
+<img src="images/ProgramButton.png" width="300" />
+
+Some Somfy documentation says you need a long-press. This may be true of some blinds, but not mine.
 
 Adding additional remotes has a built-in bind/unbind feature in the web interface. Choose which
 of your existing blinds you want the remote to control.
@@ -92,11 +112,18 @@ of your existing blinds you want the remote to control.
 
 I designed a simple 6cm x 6cm x 1.5cm square case to hold the circuit board and expose the buttons and status LEDs.
 
+
 ![Case](images/case.jpg)![Animation](images/case.gif)
 
 The Fusion 360 and STL files ca be found in the `case/` directory. Print the lid and buttons face-down.
 No Supports are needed. I changed filament half way through printing the lid to make the recessed logo
 stand out.
+
+## Future
+
+- I've found some sources detailing other Somfy remote code standards which should be fairly easy to add. I don't have these blinds so I can't test this
+- At the moment, we don't have any good way of activating tilt on a tilt & lift blind. I think there are various chords of button presses needed to activate these, depending on the blind & region
+- The web UI do with some serious polish
 
 ## Credits
 
