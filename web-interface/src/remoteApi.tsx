@@ -19,12 +19,14 @@ export async function pressButtons(remoteId: number, buttons: SomfyButton, long:
     return body;
 }
 
-export function useRemoteApi(remoteId: number): [boolean, (buttons: SomfyButton, long: boolean) => void]
+export function useRemoteApi(remoteId: number, external: boolean): [boolean, (buttons: SomfyButton, long: boolean) => void]
 {
     const toaster = useToaster();
     const [isBusy, setIsBusy] = useState(false);
 
     const pressButtonsFunc = async (buttons : SomfyButton, long: boolean) => {
+        if(external && !window.confirm("Pressing buttons on imported remotes will upset the rolling code of the real remote. Are you sure?"))
+            return;
 
         setIsBusy(true);
         const result = await pressButtons(remoteId, buttons, long);

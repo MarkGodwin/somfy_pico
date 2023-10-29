@@ -34,6 +34,8 @@ public:
 
     uint32_t BlockSize() { return _blockPages * 256 - 4; }
 
+    void PrintStorageStats();
+
 private:
     uint32_t FindBlock(uint32_t blockId) const;
     void DeletePage(uint32_t pageOffset);

@@ -12,13 +12,18 @@
 #define RADIO_RegFrequency_3Byte 0x07
 #define RADIO_RegOscCalibration 0x0a
 #define RADIO_RegListen 0x0d
-#define RADIO_RegListenCoefIdle 0x0E
-#define RADIO_RegListenCoefRx 0x0F
 #define RADIO_RegVersion 0x10
 #define RADIO_RegPaLevel 0x11
 #define RADIO_RegPaRamp 0x12
 #define RADIO_RegOcp 0x13
+#define RADIO_RegLna 0x18
+#define RADIO_RegRxBw 0x19
 
+#define RADIO_RegOokPeak 0x1b
+#define RADIO_RegOokAvg  0x1c
+#define RADIO_RegOokFix  0x1d
+
+#define RADIO_RegDioMapping 0x25
 #define RADIO_RegIrqFlags 0x27
 #define RADIO_RegRssiThreshold 0x29
 #define RADIO_RegRxTimeoutRxStart 0x2a
@@ -35,6 +40,7 @@
 #define RADIO_RegFifoThreshold 0x3c
 #define RADIO_RegPacketConfig2 0x3d
 #define RADIO_RegAesKey 0x3e
+
 
 union OpMode
 {
@@ -94,6 +100,83 @@ union Ocp
         uint8_t on:1;
         uint8_t unused:3;
     };
+};
+
+#define LNA_IMPEDANCE_50  0
+#define LNA_IMPEDANCE_200 1
+
+#define LNA_GAIN_AUTO  0x00
+#define LNA_GAIN_MAX   0x01
+#define LNA_GAIN_6DB   0x02
+#define LNA_GAIN_12DB  0x03
+#define LNA_GAIN_24DB  0x04
+#define LNA_GAIN_36DB  0x05
+#define LNA_GAIN_48DB  0x06
+
+union Lna
+{
+    uint8_t data;
+    struct {
+        uint8_t gainSelect:3;
+        uint8_t currentGain:3;
+        uint8_t unused:1;
+        uint8_t impedance:1;
+    };
+};
+
+
+#define BW_MANT_16 0x00
+#define BW_MANT_20 0x01
+#define BW_MANT_24 0x02
+
+union RxBw
+{
+    uint8_t data;
+    struct {
+        uint8_t bwExp : 3;
+        uint8_t bwMant : 2;
+        uint8_t freq : 3;
+    };
+};
+
+union OokPeak
+{
+    uint8_t data;
+    struct {
+        uint8_t threshDec : 3;
+        uint8_t threshStep : 3;
+        uint8_t threshType : 2;
+    };
+};
+
+union OokAvg
+{
+    uint8_t data;
+    struct {
+        uint8_t unused : 6;
+        uint8_t threshFilt : 2;
+    };
+};
+
+#define CLKOUT_OSC 0x00
+#define CLKOUT_RC  0x06
+#define CLKOUT_OFF 0x07
+#define DIOMAPPING_DEFAULT 0x00
+
+union DioMapping
+{
+    uint16_t data;
+    struct {
+        uint16_t clkOut : 3;
+        uint16_t unused : 1;
+        uint16_t dio5Mapping : 2;
+        uint16_t dio4Mapping : 2;
+        uint16_t dio3Mapping : 2;
+        uint16_t dio2Mapping : 2;
+        uint16_t dio1Mapping : 2;
+        uint16_t dio0Mapping : 2;
+    };
+    
 };
 
 struct IrqFlags
@@ -189,3 +272,31 @@ union FifoThreshold
     };
 };
 
+#define LISTEN_COEF_IDLE_DEFAULT 0xf5
+#define LISTEN_COEF_RX_DEFAULT 20
+
+#define LISTEN_RESOL_64US 0x01
+#define LISTEN_RESOL_4MS 0x02
+#define LISTEN_RESOL_262MS 0x03
+
+#define LISTEN_CRITERIA_THRESHOLD 0x00
+#define LISTEN_CRITERIA_SYNC 0x01
+
+#define LISTEN_END_RX     0x00
+#define LISTEN_END_MODE   0x01
+#define LISTEN_END_RESUME 0x02
+
+union ListenMode
+{
+    uint32_t data;  // 3 BYTES ONLY!
+    struct {
+        uint32_t unused1 : 8;
+        uint8_t listenCoefRx : 8;
+        uint8_t listenCoefIdle : 8;
+        uint32_t unused2 : 1;
+        uint32_t listenEnd : 2;
+        uint32_t listenCriteria : 1;
+        uint32_t listenResolRx : 2;
+        uint32_t listenResolIdle : 2;
+    };
+};

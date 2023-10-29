@@ -37,7 +37,8 @@ public:
         std::string name,
         uint32_t remoteId,
         uint16_t rollingCode,
-        std::vector<uint16_t> associatedBlinds);
+        std::vector<uint16_t> associatedBlinds,
+        bool isExternal);
 
     const std::string &GetName() { return _remoteName; }
     uint32_t GetRemoteId() { return _remoteId; }
@@ -46,8 +47,8 @@ public:
     void SetName(std::string name)
     {
         _isDirty = true;
-         _remoteName = std::move(name);
-         TriggerPublishDiscovery();
+        _remoteName = std::move(name);
+        TriggerPublishDiscovery();
     }
     void AssociateBlind(uint16_t blindId);
     void DisassociateBlind(uint16_t blindId);
@@ -57,10 +58,12 @@ public:
 
     // Press buttons on the controller. Note that buttons can be chorded.
     void PressButtons(SomfyButton buttons, uint16_t repeat);
+    void ExternalButtonPress(SomfyButton buttons, uint16_t repeat, uint16_t rollingCode);
 
+    bool IsExternal() { return _isExternal; }
     bool NeedsPublish() { return _needsPublish; }
     void TriggerPublishDiscovery() {
-        if(_mqttClient->IsEnabled())
+        if(_mqttClient->IsEnabled() && !_isExternal)
         {
             _needsPublish = true;
             _discoveryWorker.ScheduleWork();
@@ -80,7 +83,8 @@ private:
     std::string _remoteName;
     uint32_t _remoteId;
     uint16_t _rollingCode;
-    bool _isDirty; // Does need save?
+    bool _isDirty;      // Does need save?
+    bool _isExternal;   // Is this a clone of a real remote?
     bool _needsPublish;
     std::vector<uint16_t> _associatedBlinds;
 

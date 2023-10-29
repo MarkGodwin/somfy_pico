@@ -8,8 +8,8 @@
 #include "radioDefinitions.h"
 
 
-RFM69Radio::RFM69Radio(spi_inst_t *spi, uint csPin, uint resetPin)
-: _spi(spi), _csPin(csPin), _resetPin(resetPin)
+RFM69Radio::RFM69Radio(spi_inst_t *spi, uint csPin, uint resetPin, uint packetPin)
+: _spi(spi), _csPin(csPin), _resetPin(resetPin), _packetPin(packetPin)
 {
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_set_function(_csPin,   GPIO_FUNC_SIO);
@@ -30,6 +30,11 @@ void RFM69Radio::Reset()
     sleep_ms(250);
 }
 
+static void (*_irq_cb)();
+void gpio_callback(uint gpio, uint32_t events) {
+    _irq_cb();
+}
+
 void RFM69Radio::Initialize()
 {
     SetMode(MODE_STBY);
@@ -46,6 +51,20 @@ void RFM69Radio::Initialize()
     ocp.on = 0;
     ocp.trim = 0xA;
     WriteRegister(RADIO_RegOcp, ocp.data); //disable OverCurrentProtection for HW/HCW...?
+
+    Lna lna;
+    lna.data = ReadRegister(RADIO_RegLna);
+    lna.gainSelect = LNA_GAIN_12DB;
+    lna.impedance = LNA_IMPEDANCE_200;
+    WriteRegister(RADIO_RegLna, lna.data);
+
+    // Try to widen bandwidth for recv
+    RxBw rxBw;
+    rxBw.freq = 2;
+    // 50Khz
+    rxBw.bwMant = BW_MANT_20;
+    rxBw.bwExp = 2;
+    WriteRegister(RADIO_RegRxBw, rxBw.data );
 
     PaLevel level;
     level.data = 0;
@@ -71,8 +90,34 @@ void RFM69Radio::Initialize()
     packetConfig.payloadLength = 64;
     WriteRegisterWord(RADIO_RegPacketConfig, packetConfig.data);
 
+    // Start sending as soon as there is data in the fifo
+    FifoThreshold fifoThreshold;
+    fifoThreshold.txStartCondition = 0;
+    fifoThreshold.fifoThreshold = 15;
+    WriteRegister(RADIO_RegFifoThreshold, fifoThreshold.data);
+
+    ListenMode listenMode;
+    // Defaults for waking up the packet engine...
+    listenMode.listenCoefIdle = LISTEN_COEF_IDLE_DEFAULT;
+    listenMode.listenCoefRx = LISTEN_COEF_RX_DEFAULT;
+    listenMode.listenResolIdle = LISTEN_RESOL_4MS;
+    listenMode.listenResolRx = LISTEN_RESOL_64US;
+    listenMode.listenCriteria = LISTEN_CRITERIA_SYNC;   // Get a packet if the Sync bytes match
+    listenMode.listenEnd = LISTEN_END_MODE;             // Go to standby after getting any packet
+    WriteRegister3byte(RADIO_RegListen, listenMode.data);
+
+    DioMapping dioMapping;
+    // We only have DIO0 connected.
+    dioMapping.data = 0;
+    dioMapping.clkOut = CLKOUT_OFF;
+    dioMapping.dio0Mapping = 0x01;      // Signal when packet recieved. Also signals on TX Ready, but we don't care.
+    WriteRegisterWord(RADIO_RegDioMapping, dioMapping.data);
+
     // No 0xAAAAAA packet preamble
     WriteRegisterWord(RADIO_RegPreambleSize_Word, 0);
+
+    gpio_set_irq_callback(gpio_callback);
+    irq_set_enabled(IO_IRQ_BANK0, true);
 
 }
 
@@ -82,6 +127,8 @@ void RFM69Radio::SetSyncBytes(const uint8_t *sync, uint8_t length)
     syncConfig.data = ReadRegister(RADIO_RegSyncConfig);
     syncConfig.syncOn = length > 0;
     syncConfig.syncSize = length - 1;
+    syncConfig.fifoFillCondition = 0;
+    syncConfig.errorTolerance = 0;
     WriteRegister(RADIO_RegSyncConfig, syncConfig.data);
     if(length > 0)
         WriteRegisterBuffer(RADIO_RegSyncValue, sync, length);
@@ -107,6 +154,27 @@ void RFM69Radio::TransmitPacket(const uint8_t *buffer, size_t length)
     WaitForMode();
 
     WaitForPacketSent();
+    SetMode(MODE_STBY);
+}
+
+void RFM69Radio::EnableReceive(void (*cb)())
+{
+    SetMode(MODE_STBY, true);
+    WaitForMode();
+
+    // Enable interrupt on the D0 pin
+    _irq_cb = cb;
+    gpio_set_irq_enabled(_packetPin, GPIO_IRQ_EDGE_RISE, true);
+
+}
+
+void RFM69Radio::ReceivePacket(uint8_t *buffer, size_t length)
+{
+    ReadFifo(buffer, length);
+}
+
+void RFM69Radio::Standby()
+{
     SetMode(MODE_STBY);
 }
 
@@ -157,14 +225,24 @@ uint8_t RFM69Radio::GetVersion()
     return ReadRegister(RADIO_RegVersion);
 }
 
-inline void RFM69Radio::SetMode(uint8_t mode)
+inline void RFM69Radio::SetMode(uint8_t mode, bool listen)
 {
     OpMode opMode;
     opMode.sequencerOff = false;
-    opMode.listenOn = false;
+    opMode.listenOn = listen;
     opMode.listenAbort = false;
     opMode.mode = mode;
+
+    if(!listen && _listen)
+    {
+        gpio_set_irq_enabled(_packetPin, GPIO_IRQ_EDGE_RISE, false);
+        opMode.listenAbort = true;
+        WriteRegister(RADIO_RegOpMode, opMode.data);
+        opMode.listenAbort = false;
+    }
+
     WriteRegister(RADIO_RegOpMode, opMode.data);
+    _listen = listen;
 }
 
 inline bool RFM69Radio::WaitForMode()
@@ -180,8 +258,8 @@ inline bool RFM69Radio::WaitForMode()
         sleep_us(1);
     }
 
-   DBG_PUT("Waited too long for ready.");
-   DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
+    DBG_PUT("Waited too long for ready.");
+    DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
     return false;
 }
 
@@ -198,8 +276,8 @@ inline bool RFM69Radio::WaitForPacketSent()
         sleep_us(100);
     }
 
-   DBG_PUT("Waited too long for send to complete.");
-   DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
+    DBG_PUT("Waited too long for send to complete.");
+    DBG_PRINT("Flags: 0x%02x%02x\n", flags.data1, flags.data2);
     return false;
 }
 

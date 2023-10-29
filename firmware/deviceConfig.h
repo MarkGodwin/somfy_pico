@@ -68,6 +68,9 @@ class DeviceConfig
         const uint16_t *GetRemoteIds(uint32_t *count);
         void SaveRemoteIds(const uint16_t *blindIds, uint32_t count);
 
+        const uint32_t *GetExternalRemoteIds(uint32_t *count);
+        void SaveExternalRemoteIds(const uint32_t *remoteIds, uint32_t count);
+
         const BlindConfig *GetBlindConfig(uint16_t blindId);
         void SaveBlindConfig(uint16_t blindId, const BlindConfig *blindConfig);
         void DeleteBlindConfig(uint16_t blindId);
@@ -83,6 +86,8 @@ class DeviceConfig
 
         void SaveIdList(uint32_t header, const uint16_t *ids, uint32_t count);
         const uint16_t *GetIdList(uint32_t header, uint32_t *count);
+        void SaveIdList32(uint32_t header, const uint32_t *ids, uint32_t count);
+        const uint32_t *GetIdList32(uint32_t header, uint32_t *count);
 
         BlockStorage _storage;        
 };

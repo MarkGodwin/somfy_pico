@@ -52,6 +52,8 @@
 
 // Radio hardware reset
 #define PIN_RESET_RADIO 15
+// Radio IRQ on packet status
+#define PIN_RADIO_PACKET 14
 
 const WifiConfig *checkConfig(
     std::shared_ptr<DeviceConfig> config,
@@ -112,6 +114,9 @@ int main()
     gpio_set_dir(PIN_WIFI, GPIO_IN);
     gpio_set_pulls(PIN_WIFI, true, false);
 
+    gpio_init(PIN_RADIO_PACKET);
+    gpio_set_dir(PIN_RADIO_PACKET, GPIO_IN);
+
     // SPI initialisation. Set SPI speed to 0.5MHz. Absolute max supported is 10Mhz
     spi_init(SPI_PORT, 500*1000);
     gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
@@ -142,7 +147,7 @@ int main()
     blueLed.TurnOff();
 
     DBG_PUT("Starting the Radio");
-    auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO);
+    auto radio = std::make_shared<RFM69Radio>(SPI_PORT, PIN_CS_RADIO, PIN_RESET_RADIO, PIN_RADIO_PACKET);
 
     // We'll run radio commands from the core 1 thread
     auto commandQueue = std::make_shared<RadioCommandQueue>(radio, &blueLed);
@@ -248,7 +253,6 @@ const WifiConfig *checkConfig(
         config->HardReset();
     }
 
-
     auto wifiConfig = config->GetWifiConfig();
     if(wifiConfig == nullptr ||
         config->GetMqttConfig() == nullptr)
@@ -318,6 +322,15 @@ void runServiceMode(
         {
             republishTimer.ResetTimer(0);
             mqttConnected = false;
+        }
+
+        // Check for recieved Somfy messages
+        SomfyCommand cmd;
+        if(commandQueue->ReadCommand(&cmd))
+        {
+            // A button on someone else's remote has been pressed. If it's a remote we care about
+            // update the state of any blinds attached to that remote
+            remotes->ExternalButtonPress(cmd);
         }
 
         if(!gpio_get(PIN_RESET))

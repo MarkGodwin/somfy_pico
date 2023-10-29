@@ -16,6 +16,9 @@ BlockStorage::BlockStorage(uint32_t base, size_t size, size_t blockSize)
     _base = (base / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE;
     _sectors = (size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
     _blockPages = (blockSize + 4 + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE;
+
+    PrintStorageStats();
+
 }
 
 const uint8_t *BlockStorage::GetBlock(uint32_t blockId) const
@@ -150,6 +153,52 @@ void BlockStorage::Format()
        DBG_PRINT("Format failed (%d)\n", result);
 }
 
+void BlockStorage::PrintStorageStats()
+{
+    // Print statistics about the block storage...
+    auto offset = _base;
+    auto end = offset + _sectors * FLASH_SECTOR_SIZE - _blockPages * FLASH_PAGE_SIZE + 1;
+
+    auto usedCount = 0;
+    auto freeCount = 0;
+    auto clearedCount = 0;
+    auto clearedSectors = 0;    // Number of sectors cleared and ready for reformat
+
+    uint32_t emptyStart = offset;
+
+    while(offset < end)
+    {
+        auto id = (uint32_t *)(XIP_BASE + offset);
+        if(*id == 0)
+        {
+            // A previously cleared block
+            clearedCount++;
+        }
+        else
+        {
+            auto emptySectorStart = (emptyStart - _base + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
+            auto emptySectorEnd = (offset - _base) / FLASH_SECTOR_SIZE;
+            if(emptySectorStart < emptySectorEnd)
+                clearedSectors += (emptySectorEnd - emptySectorStart);
+
+            emptyStart = offset + _blockPages * FLASH_PAGE_SIZE;
+            if(*id == 0xFFFFFFFF)
+            {
+                // A clean formatted block
+                freeCount++;
+            }
+            else
+            {
+                // A block with data
+                usedCount++;
+            }
+        }
+        offset += _blockPages * FLASH_PAGE_SIZE;
+    }
+
+    printf("Storage statistics:\n    Sectors:  %d\n    Blocks:   %d\n    Used:     %d\n    Free:     %d\n    Del:      %d\n    Del Sect: %d\n\n", _sectors, (_sectors * FLASH_SECTOR_SIZE) / (_blockPages * FLASH_PAGE_SIZE), usedCount, freeCount, clearedCount, clearedSectors);
+}
+
 void BlockStorage::DeletePage(uint32_t pageOffset)
 {
     flash_safe_execute( [](void *pg) {
@@ -173,7 +222,7 @@ void BlockStorage::FormatEmptySectors()
 
     while(offset < end)
     {
-        if(*(uint32_t *)(XIP_BASE + offset) != BLOCK_EMPTY)
+        if(*(uint32_t *)(XIP_BASE + _base + offset) != BLOCK_EMPTY)
         {
             // We know the current sector is not empty
             auto emptySectorEnd = offset / FLASH_SECTOR_SIZE;
@@ -183,7 +232,7 @@ void BlockStorage::FormatEmptySectors()
                 FormatSectors(emptySectorStart, emptySectorEnd - emptySectorStart);
 
             // Assume the next sector _after_ the end of this block is empty until we know otherwise
-            emptySectorStart = (offset + _blockPages * FLASH_PAGE_SIZE - 1) / FLASH_SECTOR_SIZE + 1;
+            emptySectorStart = emptySectorEnd + 1;
         }
         offset += _blockPages * FLASH_PAGE_SIZE;
     }
@@ -196,6 +245,7 @@ void BlockStorage::FormatEmptySectors()
 
 void BlockStorage::FormatSectors(int sector, int count)
 {
+    DBG_PRINT("Formatting sectors %d to %d\n", sector, sector + count - 1);
     struct FmtParams
     {
         uint32_t base;

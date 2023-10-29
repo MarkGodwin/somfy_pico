@@ -51,12 +51,10 @@ export function HomePage(props: {apMode: boolean, mqttConnected: boolean} ) {
           {props.apMode ? <WifiSetup /> : null}
 
           <h2 className="col-md-8 fs-4 mt-5">Credits:</h2>
-          <p>
-            <ul className="fs-5">
-              <li>Original concept from <a href="https://github.com/Nickduino/Pi-Somfy">Nickduino Pi-Somfy project</a>.</li>
-              <li>Protocol information reverse engineered by <a href="https://pushstack.wordpress.com/somfy-rts-protocol/">PushStack</a>.</li>
-            </ul>
-          </p>
+          <ul className="fs-5">
+            <li>Original concept from <a href="https://github.com/Nickduino/Pi-Somfy">Nickduino Pi-Somfy project</a>.</li>
+            <li>Protocol information reverse engineered by <a href="https://pushstack.wordpress.com/somfy-rts-protocol/">PushStack</a>.</li>
+          </ul>
           <p>Copyright ©️ 2023 Mark Godwin.</p>
         </Container>
       </div>

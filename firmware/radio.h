@@ -9,7 +9,7 @@
 class RFM69Radio
 {
 public:
-    RFM69Radio(spi_inst_t *spi, uint csPin, uint resetPin);
+    RFM69Radio(spi_inst_t *spi, uint csPin, uint resetPin, uint packetPin);
 
     void SetSymbolWidth(uint16_t us);
     void SetBitRate(uint32_t bps);
@@ -28,10 +28,13 @@ public:
     void SetPacketFormat(bool manchester, uint8_t payloadSize);
 
     void TransmitPacket(const uint8_t *buffer, size_t length);
+    void ReceivePacket(uint8_t *buffer, size_t length);
+    void EnableReceive(void (*cb)());
+    void Standby();
 
 private:
 
-    void SetMode(uint8_t mode);
+    void SetMode(uint8_t mode, bool listen = false);
     bool WaitForMode();
     bool WaitForPacketSent();
 
@@ -46,8 +49,10 @@ private:
     void ReadRegisterBuffer(uint8_t reg, uint8_t *buffer, uint8_t length);
     void ReadFifo(uint8_t *buffer, uint8_t length);
 
+    bool _listen;
     spi_inst_t *_spi;
     uint _csPin;
     uint _resetPin;
+    uint _packetPin;
 
 };

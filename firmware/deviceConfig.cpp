@@ -15,6 +15,7 @@ static const uint32_t wifiConfigMagic = 0x19841984;
 static const uint32_t mqttConfigMagic = 0x19841985;
 static const uint32_t blindsConfigMagic = 0x19841986;
 static const uint32_t remotesConfigMagic = 0x19841987;
+static const uint32_t externalRemotesConfigMagic = 0x19841990;
 static const uint32_t blindConfigMagic = 0x19850000;
 static const uint32_t remoteConfigMagic = 0x19860000;
 
@@ -60,6 +61,11 @@ void DeviceConfig::SaveRemoteIds(const uint16_t *remoteIds, uint32_t count)
     SaveIdList(remotesConfigMagic, remoteIds, count);
 }
 
+void DeviceConfig::SaveExternalRemoteIds(const uint32_t *remoteIds, uint32_t count)
+{
+    SaveIdList32(externalRemotesConfigMagic, remoteIds, count);
+}
+
 const BlindConfig *DeviceConfig::GetBlindConfig(uint16_t blindId)
 {
     return (BlindConfig *)_storage.GetBlock(blindConfigMagic | blindId);
@@ -84,6 +90,8 @@ void DeviceConfig::DeleteBlindConfig(uint16_t blindId)
 
 const RemoteConfig *DeviceConfig::GetRemoteConfig(uint32_t remoteId)
 {
+    if(remoteId == 0xFFFFFFFF || !remoteId)
+        return nullptr;
     return (RemoteConfig *)_storage.GetBlock(remoteConfigMagic | (remoteId & 0xFFFF));
 }
 
@@ -107,6 +115,11 @@ void DeviceConfig::DeleteRemoteConfig(uint32_t remoteId)
 const uint16_t *DeviceConfig::GetRemoteIds(uint32_t *count)
 {
     return GetIdList(remotesConfigMagic, count);
+}
+
+const uint32_t *DeviceConfig::GetExternalRemoteIds(uint32_t *count)
+{
+    return GetIdList32(externalRemotesConfigMagic, count);
 }
 
 void DeviceConfig::HardReset()
@@ -147,6 +160,24 @@ void DeviceConfig::SaveIdList(uint32_t header, const uint16_t *ids, uint32_t cou
     free(buf);
 }
 
+void DeviceConfig::SaveIdList32(uint32_t header, const uint32_t *ids, uint32_t count)
+{
+    size_t bytes = sizeof(count) + sizeof(uint32_t) * count;
+    if(bytes > _storage.BlockSize())
+       DBG_PUT("Too many ids to fit in the block. FAIL\n");
+
+    auto buf = (uint8_t *)malloc(bytes);
+    if(buf == nullptr)
+    {
+       DBG_PRINT("Failed to allocate a buffer of %d bytes to save ID list\n", bytes);
+        return;
+    }
+    memcpy(buf, &count, sizeof(count));
+    memcpy(buf + sizeof(count), ids, sizeof(uint32_t) * count);
+    _storage.SaveBlock(header, buf, bytes);
+    free(buf);
+}
+
 const uint16_t *DeviceConfig::GetIdList(uint32_t header, uint32_t *count)
 {
     auto block = (const uint32_t *)_storage.GetBlock(header);
@@ -157,6 +188,18 @@ const uint16_t *DeviceConfig::GetIdList(uint32_t header, uint32_t *count)
     }
     *count = *block;
     return (const uint16_t *)(block + 1);
+}
+
+const uint32_t *DeviceConfig::GetIdList32(uint32_t header, uint32_t *count)
+{
+    auto block = (const uint32_t *)_storage.GetBlock(header);
+    if(block == nullptr)
+    {
+        *count = 0;
+        return nullptr;
+    }
+    *count = *block;
+    return (block + 1);
 }
 
 bool operator==(const RemoteConfig &left, const RemoteConfig &right)

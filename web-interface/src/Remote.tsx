@@ -6,17 +6,18 @@ import { BlindConfig, RemoteConfig } from './BlindTypes';
 import { Button, ButtonGroup, Card, Col, Form, InputGroup, ListGroup, Modal, Stack } from 'react-bootstrap';
 import { useToaster } from './toaster';
 import { SomfyButton, pressButtons, useRemoteApi } from './remoteApi';
+import { promiseHooks } from 'v8';
 
 export function RemoteButtons(props: { config: RemoteConfig }) {
 
-    const [isBusy, doButtonPress] = useRemoteApi(props.config.id);
+    const [isBusy, doButtonPress] = useRemoteApi(props.config.id, props.config.external);
     const [showFull, setShowFull] = useState(false);
 
     const upDownControls = (
         <>
             <Button variant="light" className="mx-auto m-3" disabled={isBusy} onClick={() => doButtonPress(SomfyButton.Up, false)} >
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-arrow-up-circle" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z" />
+                    <path fillRule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z" />
                 </svg>
             </Button>
 
@@ -28,7 +29,7 @@ export function RemoteButtons(props: { config: RemoteConfig }) {
             </Button>
             <Button variant="light" className="mx-auto mt-3" disabled={isBusy} onClick={() => doButtonPress(SomfyButton.Down, false)} >
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" className="bi bi-arrow-down-circle" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z" />
+                    <path fillRule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z" />
                 </svg>
             </Button>
         </>
@@ -83,7 +84,7 @@ export function RemoteButtons(props: { config: RemoteConfig }) {
                                 </Button>
                                 <Button variant="light" className="mx-auto m-3" disabled={isBusy} onClick={() => doButtonPress(SomfyButton.Up | SomfyButton.My, false)} aria-description='Up+Stop Short'  >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" fill="currentColor" className="bi bi-arrow-up-circle" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z" />
+                                        <path fillRule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-7.5 3.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V11.5z" />
                                     </svg>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
@@ -95,7 +96,7 @@ export function RemoteButtons(props: { config: RemoteConfig }) {
                                 </Button>
                                 <Button variant="light" className="mx-auto m-3" disabled={isBusy} onClick={() => doButtonPress(SomfyButton.Down | SomfyButton.My, false)} aria-description='Down+Stop Short'  >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="32" fill="currentColor" className="bi bi-arrow-down-circle" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z" />
+                                        <path fillRule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z" />
                                     </svg>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
@@ -182,23 +183,27 @@ export function Remote(props: {
         const target = props.blinds.find(b => b.id === bindTo);
         if(!target)
             return;
-
-        // Long Press the Program button on the blind's remote
-        if(!await pressButtons(target.remoteId, SomfyButton.Prog, true))
-        {
-            toaster.open("Bind Failed", "Unable to ask the existing blind to enter program mode.");
-            return;
-        }
         
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Short Press the Program button on this remote
-        if(!await pressButtons(props.config.id, SomfyButton.Prog, false))
+        // Don't actually press buttons on imported remotes when binding
+        if(!props.config.external)
         {
-            toaster.open("Bind Failed", "This remote rejected the bind command.");
-            return;
+            // Long Press the Program button on the blind's remote
+            if(!await pressButtons(target.remoteId, SomfyButton.Prog, true))
+            {
+                toaster.open("Bind Failed", "Unable to ask the existing blind to enter program mode.");
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Short Press the Program button on this remote
+            if(!await pressButtons(props.config.id, SomfyButton.Prog, false))
+            {
+                toaster.open("Bind Failed", "This remote rejected the bind command.");
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Tell the controller the remote is bound.
         const params = new URLSearchParams();
@@ -229,27 +234,30 @@ export function Remote(props: {
             if(!target)
                 return;
 
-            // Long Press the Program button on the blind's remote
-            if(!await pressButtons(target.remoteId, SomfyButton.Prog, true))
+            if(!props.config.external)
             {
-                toaster.open("Unbind Failed", "Unable to ask the existing blind to enter program mode.");
-                return;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 3000));
+                // Long Press the Program button on the blind's remote
+                if(!await pressButtons(target.remoteId, SomfyButton.Prog, true))
+                {
+                    toaster.open("Unbind Failed", "Unable to ask the existing blind to enter program mode.");
+                    return;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Long Press the Program button on this remote
-            if(!await pressButtons(props.config.id, SomfyButton.Prog, true))
-            {
-                toaster.open("Unbind Failed", "This remote rejected the bind command.");
-                return;
+                // Long Press the Program button on this remote
+                if(!await pressButtons(props.config.id, SomfyButton.Prog, true))
+                {
+                    toaster.open("Unbind Failed", "This remote rejected the bind command.");
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Tell the controller the remote is not bound.
             const params = new URLSearchParams();
             params.set("id", props.config.id.toString());
-            params.set("blindId", bindTo.toString());
+            params.set("blindId", blindId.toString());
             let response = await fetch("/api/remotes/unbindBlind.json?" + params.toString());
 
             let body: boolean = await response.json();
@@ -288,7 +296,7 @@ export function Remote(props: {
         <>
             <Col className="align-self-end">
                 <Card className="remote-tile">
-                    <Card.Header>{props.config.name}</Card.Header>
+                    <Card.Header>{props.config.name}{props.config.external?" [Imported]":""}</Card.Header>
                     <Card.Body>
                         <Stack gap={4}>
                             <RemoteButtons config={props.config} />
@@ -316,7 +324,7 @@ export function Remote(props: {
                         <InputGroup className="mb-3">
                             <Form.Select value={bindTo} onChange={e => setBindTo(e.target.value===""? -1 :parseInt(e.target.value))}>
                                 <option value="-1">Select a blind to bind</option>
-                                {props.blinds.filter(b => props.config.blinds.indexOf(b.id) === -1).map(b => (<option value={b.id}>{b.name}</option>))}
+                                {props.blinds.filter(b => props.config.blinds.indexOf(b.id) === -1).map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}
                             </Form.Select>
                             <Button id="button-addon3" onClick={handleBind} disabled={isBinding || bindTo === -1}>
                                     Bind
@@ -326,7 +334,7 @@ export function Remote(props: {
                         <ListGroup>
                             {
                                 props.config.blinds.map(id => props.blinds.find(b => b.id === id)).filter(b => b).map(b => (
-                                    <ListGroup.Item>
+                                    <ListGroup.Item key={b!.id}>
                                         <Button className="float-end btn-sm"  onClick={() => handleUnbind(b!.id)} disabled={isBinding}>Unbind</Button>
                                         <div className="me-auto">{b!.name}</div>
                                     </ListGroup.Item>

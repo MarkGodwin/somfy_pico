@@ -9,6 +9,7 @@
 #include <map>
 #include "webServer.h"
 #include "scheduler.h"
+#include "commandQueue.h"
 
 class DeviceConfig;
 class RadioCommandQueue;
@@ -34,6 +35,8 @@ class SomfyRemotes
         bool TryRepublish();
         void SaveRemoteState();
 
+        void ExternalButtonPress(SomfyCommand command);
+
     private:
 
         void SaveRemoteList();
@@ -41,18 +44,22 @@ class SomfyRemotes
         std::shared_ptr<SomfyRemote> GetRemoteParam(const CgiParams &params);
 
         bool DoAddRemote(const CgiParams &params);
+        bool DoImportRemote(const CgiParams &params);
         bool DoUpdateRemote(std::shared_ptr<SomfyRemote> remote, const CgiParams &params);
         bool DoDeleteRemote(std::shared_ptr<SomfyRemote> remote, const CgiParams &params);
         bool DoAddOrRemoveBlindToRemote(std::shared_ptr<SomfyRemote> remote, const CgiParams &params, blindAssocFunc assocFunc);
         bool DoButtonPress(std::shared_ptr<SomfyRemote> remote, const CgiParams &params);
+        bool StartDiscovery();
 
         uint16_t GetRemotesResponse(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart);
+        uint16_t GetDiscoveryResponse(char *pcInsert, int iInsertLen, uint16_t tagPart, uint16_t *nextPart);
 
         std::shared_ptr<DeviceConfig> _config;
         std::shared_ptr<Blinds> _blinds;
         std::shared_ptr<RadioCommandQueue> _commandQueue;
         std::shared_ptr<MqttClient> _mqttClient;
         std::map<uint32_t, std::shared_ptr<SomfyRemote>> _remotes;
+        std::list<uint32_t> _detectedRemotes;
 
         uint32_t _nextId;
 

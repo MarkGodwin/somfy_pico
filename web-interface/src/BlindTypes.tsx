@@ -12,6 +12,7 @@ export interface BlindConfig {
 export interface RemoteConfig {
     id : number;
     name: string;
-    blinds: number[]
+    blinds: number[];
+    external: boolean;
   };
   

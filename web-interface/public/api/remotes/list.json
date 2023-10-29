@@ -2,31 +2,37 @@
     {
         "id": 5000,
         "name": "Remote 1",
-        "blinds": [1]
+        "blinds": [1],
+        "external": false
     },
     {
         "id": 5001,
         "name": "Remote 2",
-        "blinds": [2]
+        "blinds": [2],
+        "external": false
     },
     {
         "id": 5002,
         "name": "Remote 3",
-        "blinds": [3]
+        "blinds": [3],
+        "external": false
     },
     {
         "id": 5003,
         "name": "Mega Remote",
-        "blinds": [1, 2, 3]
+        "blinds": [1, 2, 3],
+        "external": false
     },
     {
         "id": 5004,
         "name": "The Ultimate Mega Remote of Doom",
-        "blinds": [2, 3]
+        "blinds": [2, 3],
+        "external": true
     },
     {
         "id": 5005,
         "name": "Unbound remote",
-        "blinds": []
+        "blinds": [],
+        "external": true
     }
 ]

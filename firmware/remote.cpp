@@ -24,7 +24,8 @@ SomfyRemote::SomfyRemote(
     std::string name,
     uint32_t remoteId,
     uint16_t rollingCode,
-    std::vector<uint16_t> associatedBlinds)
+    std::vector<uint16_t> associatedBlinds,
+    bool isExternal)
     : _commandQueue(std::move(commandQueue)),
       _blinds(std::move(blinds)),
       _config(std::move(config)),
@@ -34,14 +35,16 @@ SomfyRemote::SomfyRemote(
       _rollingCode(rollingCode),
       _associatedBlinds(std::move(associatedBlinds)),
       _isDirty(false),
+      _isExternal(isExternal),
       _needsPublish(false),
       _cmdSubscription(mqttClient, string_format("pico_somfy/remotes/%08x/cmd", remoteId), [this](const uint8_t *payload, uint32_t length)
                        { OnCommand(payload, length); }),
       _discoveryWorker([this]()
                        { PublishDiscovery(); })
 {
-   DBG_PRINT("Remote ID %08x: %s\n", remoteId, name.c_str());
-   DBG_PRINT("    Rolling code: %d\n    Blind Count: %d\n", _rollingCode, _associatedBlinds.size());
+    DBG_PRINT("Remote ID %08x: %s\n", remoteId, name.c_str());
+    DBG_PRINT("    Rolling code: %d\n    Blind Count: %d\n", _rollingCode, _associatedBlinds.size());
+
     TriggerPublishDiscovery();
 }
 
@@ -69,9 +72,22 @@ void SomfyRemote::SaveConfig(bool force)
 void SomfyRemote::PressButtons(SomfyButton buttons, uint16_t repeat)
 {
     _isDirty = true;
-    _commandQueue->QueueCommand(_remoteId, _rollingCode++, buttons, repeat);
+    
+    _commandQueue->QueueCommand(SomfyCommand { .remoteId = _remoteId, .rollingCode = _rollingCode++, .repeat = repeat, .button = buttons });
 
     // Now tell all our connected blinds that we've sent a command
+    for (auto blindId : _associatedBlinds)
+    {
+        _blinds->GetBlind(blindId)->ButtonsPressed(buttons);
+    }
+}
+
+void SomfyRemote::ExternalButtonPress(SomfyButton buttons, uint16_t repeat, uint16_t rollingCode)
+{
+    _isDirty = true;
+    _rollingCode = rollingCode + 1;
+
+    // Tell all connected blinds that a button on the external remote was pressed
     for (auto blindId : _associatedBlinds)
     {
         _blinds->GetBlind(blindId)->ButtonsPressed(buttons);

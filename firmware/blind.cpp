@@ -161,8 +161,8 @@ void Blind::SaveConfig(bool force)
     config.currentPosition = _targetPosition;
     config.myPosition = _favouritePosition;
 
-   DBG_PRINT("Saving blind ID %d: %s\n", _blindId, config.blindName);
-   DBG_PRINT("    Primary Remote: %08x\n    Position: %d\n    Open time: %d\n", config.remoteId, config.currentPosition, config.openTime);
+    DBG_PRINT("Saving blind ID %d: %s\n", _blindId, config.blindName);
+    DBG_PRINT("    Primary Remote: %08x\n    Position: %d\n    Open time: %d\n", config.remoteId, config.currentPosition, config.openTime);
 
     _config->SaveBlindConfig(_blindId, &config);
     _isDirty = false;
@@ -176,7 +176,7 @@ uint32_t Blind::UpdatePosition()
     if(_motionDirection)
     {
         auto elapsed = absolute_time_diff_us(_lastTick, now) / 1000000.0f;
-       DBG_PRINT("Blind %d, TargetPosition %d, IntermediatePosition %hf, Tick: %hfs\n", _blindId, _targetPosition, _intermediatePosition, elapsed);
+        DBG_PRINT("Blind %d, TargetPosition %d, IntermediatePosition %hf, Tick: %hfs\n", _blindId, _targetPosition, _intermediatePosition, elapsed);
         auto pctPerSecond = 100.0f / (_motionDirection > 0 ? _openTime : -_closeTime);
         // Update the blind position, given the time elapsed
         auto travelled = elapsed * pctPerSecond;
@@ -271,16 +271,16 @@ void Blind::PublishDiscovery()
     if(!_mqttClient->IsConnected())
         return;
 
-   DBG_PRINT("Discovery publish for blind %d (%s)\n", _blindId, _name.c_str()); 
+    DBG_PRINT("Discovery publish for blind %d (%s)\n", _blindId, _name.c_str()); 
     auto mqttConfig = _config->GetMqttConfig();
     if(!*mqttConfig->topic)
     {
-       DBG_PUT("Discovery topic not configured");
+        DBG_PUT("Discovery topic not configured");
         _needsPublish = false;
         return;
     }
 
-   DBG_PRINT("Discovery topic: %s\n", mqttConfig->topic); 
+    DBG_PRINT("Discovery topic: %s\n", mqttConfig->topic); 
 
     char payload[512];
     BufferOutput payloadWriter(payload, sizeof(payload));
@@ -303,7 +303,7 @@ void Blind::PublishDiscovery()
     char topic[64];
     snprintf(topic, sizeof(topic), "%s/cover/pico_somfy/%08x/config", mqttConfig->topic, _blindId);
     topic[63] = 0;
-   DBG_PRINT("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
+    DBG_PRINT("Publishing %d bytes to %s\n", payloadWriter.BytesWritten(), topic);
     if(_mqttClient->Publish(topic, (uint8_t *)payload, payloadWriter.BytesWritten()))
         _needsPublish = false;
 

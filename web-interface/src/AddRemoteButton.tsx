@@ -42,7 +42,7 @@ return (
         <Button className="mt-4" onClick={() => setShowAdd(true)}>Add</Button>
         <Modal show={showAdd} onHide={handleAddCancel}>
             <Modal.Header closeButton>
-                <Modal.Title>Add Remote</Modal.Title>
+                <Modal.Title>Add New Remote</Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 <Form>

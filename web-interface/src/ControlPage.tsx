@@ -9,6 +9,7 @@ import { Blind } from "./Blind";
 import { Remote } from "./Remote";
 import { AddBlind } from './AddBlind';
 import { AddRemoteButton } from './AddRemoteButton';
+import { DetectRemoteButton } from './DetectRemoteButton';
 
 export function ControlPage(): JSX.Element {
 
@@ -56,7 +57,7 @@ export function ControlPage(): JSX.Element {
 
 
     // Blinds and their associated remotes
-    const blindList = blinds.map(i => <Accordion.Item eventKey={i.id.toString()}><Blind config={i} remote={remotes.find(r => r.id === i.remoteId)!} onSaved={() => setReload(reload+1)} /></Accordion.Item>);
+    const blindList = blinds.map(i => <Accordion.Item eventKey={i.id.toString()}><Blind key={i.id} config={i} remote={remotes.find(r => r.id === i.remoteId)!} onSaved={() => setReload(reload+1)} /></Accordion.Item>);
 
     // Other remotes
     const remoteList = remotes.filter(r => !blinds.find(b => b.remoteId === r.id)).map(r => <Remote key={r.id} config={r} blinds={blinds} onChanged={() => setReload(reload+1)} />);
@@ -69,7 +70,7 @@ export function ControlPage(): JSX.Element {
             <Spinner loading={loading}></Spinner>
             <Accordion>
                 {blindList}
-                <AddBlind onSaved={() => { setReload(reload+1); }} />
+                <AddBlind key={-1} onSaved={() => { setReload(reload+1); }} />
             </Accordion>
             <h1 className="mt-4">
                 Custom Remotes
@@ -81,6 +82,7 @@ export function ControlPage(): JSX.Element {
                 </Row>
             </Container>
             <AddRemoteButton onSaved={() => setReload(reload+1)} />
+            <DetectRemoteButton onSaved={() => setReload(reload+1)} />
         </div>
     );
 }
