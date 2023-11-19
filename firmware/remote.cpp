@@ -78,7 +78,7 @@ void SomfyRemote::PressButtons(SomfyButton buttons, uint16_t repeat)
     // Now tell all our connected blinds that we've sent a command
     for (auto blindId : _associatedBlinds)
     {
-        _blinds->GetBlind(blindId)->ButtonsPressed(buttons);
+        _blinds->GetBlind(blindId)->ButtonsPressed(buttons, repeat > ShortPress);
     }
 }
 
@@ -90,7 +90,7 @@ void SomfyRemote::ExternalButtonPress(SomfyButton buttons, uint16_t repeat, uint
     // Tell all connected blinds that a button on the external remote was pressed
     for (auto blindId : _associatedBlinds)
     {
-        _blinds->GetBlind(blindId)->ButtonsPressed(buttons);
+        _blinds->GetBlind(blindId)->ButtonsPressed(buttons, repeat > 7);
     }
 }
 

@@ -50,6 +50,7 @@ private:
     void ReadFifo(uint8_t *buffer, uint8_t length);
 
     bool _listen;
+    uint8_t _mode;
     spi_inst_t *_spi;
     uint _csPin;
     uint _resetPin;

@@ -45,7 +45,7 @@ class Blind
         void GoToMyPosition();
 
         /// @brief Called if buttons on a remote linked to this blind are pressed
-        void ButtonsPressed(SomfyButton button);
+        void ButtonsPressed(SomfyButton button, bool longPress);
 
         /// @brief Saves the current position as the My position
         void SaveMyPosition();

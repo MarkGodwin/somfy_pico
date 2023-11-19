@@ -103,6 +103,7 @@ void RadioCommandQueue::Shutdown()
     } 
 }
 
+/// @brief Called when there is a packet to be read from the radio
 void RadioCommandQueue::QueueReceive()
 {
     CommandEntry entry = { 
@@ -158,14 +159,19 @@ void RadioCommandQueue::Worker()
 
     while(true)
     {
-        // Enter RX mode while we wait...
-        // Wait for the end of any sync bytes (both initial and repeat ends the same way)
-        // By offsetting the sync bytes by 1 bit, we get good reception... The sync pulses
-        // from the genuine remotes don't match the main signal section symbol width exactly.
-        uint8_t syncBytes[] = {0xE1, 0xE1, 0xFE};
-        _radio->SetSyncBytes(syncBytes, sizeof(syncBytes));
-        _radio->SetPacketFormat(true, 7);
-        _radio->EnableReceive([]() {     _thequeue->QueueReceive(); } );
+        
+        // Don't enter RX mode if there is already another packet waiting to be sent
+        if(queue_is_empty(&_queue))
+        {
+            // Enter RX mode while we wait...
+            // Wait for the end of any sync bytes (both initial and repeat ends the same way)
+            // By offsetting the sync bytes by 1 bit, we get good reception... The sync pulses
+            // from the genuine remotes don't match the main signal section symbol width exactly.
+            uint8_t syncBytes[] = {0xE1, 0xE1, 0xFE};
+            _radio->SetSyncBytes(syncBytes, sizeof(syncBytes));
+            _radio->SetPacketFormat(true, 7);
+            _radio->EnableReceive([]() { _thequeue->QueueReceive(); } );
+        }
 
         CommandEntry entry;
         queue_remove_blocking(&_queue, &entry);

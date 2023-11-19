@@ -107,7 +107,7 @@ void Blind::GoToMyPosition()
     _remote->PressButtons(SomfyButton::My, ShortPress);
 }
 
-void Blind::ButtonsPressed(SomfyButton button)
+void Blind::ButtonsPressed(SomfyButton button, bool longPress)
 {
     if(button == SomfyButton::Up)
     {
@@ -126,6 +126,14 @@ void Blind::ButtonsPressed(SomfyButton button)
             _targetPosition = round(_intermediatePosition);
             _motionDirection = 0;
         }
+        else if(longPress)
+        {
+            // This is the user setting a favourite position for the blind
+            if(_targetPosition > 0 && _targetPosition < 100)
+                _favouritePosition = _targetPosition;
+            else
+                return;
+        }
         else
         {
             _targetPosition = _favouritePosition;
@@ -134,7 +142,8 @@ void Blind::ButtonsPressed(SomfyButton button)
     }
 
     _lastTick = get_absolute_time();
-     _refreshTimer.ResetTimer(500);
+    _refreshTimer.ResetTimer(500);
+    _isDirty = true;
 }
 
 void Blind::SaveMyPosition()
@@ -142,7 +151,6 @@ void Blind::SaveMyPosition()
     if(!_motionDirection)
     {
         _remote->PressButtons(SomfyButton::My, LongPress);
-        _favouritePosition = _targetPosition;
     }
 }
 

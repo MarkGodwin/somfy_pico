@@ -9,7 +9,7 @@
 
 
 RFM69Radio::RFM69Radio(spi_inst_t *spi, uint csPin, uint resetPin, uint packetPin)
-: _spi(spi), _csPin(csPin), _resetPin(resetPin), _packetPin(packetPin)
+: _spi(spi), _csPin(csPin), _resetPin(resetPin), _packetPin(packetPin), _listen(false), _mode(MODE_SLEEP)
 {
     // Chip select is active-low, so we'll initialise it to a driven-high state
     gpio_set_function(_csPin,   GPIO_FUNC_SIO);
@@ -148,10 +148,8 @@ void RFM69Radio::SetPacketFormat(bool manchester, uint8_t payloadSize)
 
 void RFM69Radio::TransmitPacket(const uint8_t *buffer, size_t length)
 {
-    WaitForMode();
     WriteFifo(buffer, length);
     SetMode(MODE_TX);
-    WaitForMode();
 
     WaitForPacketSent();
     SetMode(MODE_STBY);
@@ -160,7 +158,6 @@ void RFM69Radio::TransmitPacket(const uint8_t *buffer, size_t length)
 void RFM69Radio::EnableReceive(void (*cb)())
 {
     SetMode(MODE_STBY, true);
-    WaitForMode();
 
     // Enable interrupt on the D0 pin
     _irq_cb = cb;
@@ -227,6 +224,9 @@ uint8_t RFM69Radio::GetVersion()
 
 inline void RFM69Radio::SetMode(uint8_t mode, bool listen)
 {
+    if(mode == _mode && listen == _listen)
+        return;
+
     OpMode opMode;
     opMode.sequencerOff = false;
     opMode.listenOn = listen;
@@ -243,6 +243,9 @@ inline void RFM69Radio::SetMode(uint8_t mode, bool listen)
 
     WriteRegister(RADIO_RegOpMode, opMode.data);
     _listen = listen;
+    _mode = mode;
+
+    WaitForMode();
 }
 
 inline bool RFM69Radio::WaitForMode()
